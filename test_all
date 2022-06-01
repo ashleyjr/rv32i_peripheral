@@ -2,3 +2,10 @@ cd ip/x_top_uart_rx
 ./run > /dev/null 
 cd ../..
 
+cd ip/x_top_uart_tx
+./run > /dev/null 
+cd ../..
+
+cd ip/x_top_uart_back_to_back
+./run > /dev/null 
+cd ../..
