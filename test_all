@@ -1,0 +1,4 @@
+cd ip/x_top_uart_rx
+./run > /dev/null 
+cd ../..
+
