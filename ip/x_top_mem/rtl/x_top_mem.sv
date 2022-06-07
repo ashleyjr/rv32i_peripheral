@@ -1,6 +1,7 @@
 module x_top_mem#(
-   p_clk_hz = 1000000, 
-   p_baud   = 9600
+   p_clk_hz  = 1000000, 
+   p_baud    = 9600,
+   p_timeout = 100000
 )(
    input    logic          i_clk,
    input    logic          i_nrst,
@@ -16,75 +17,102 @@ module x_top_mem#(
    output   logic          o_tx
 );
 
+   localparam int p_timeout_width = $clog2(p_timeout);
+
    typedef enum logic [6:0] {
-      IDLE, 
-      W_CMD,
-      R_CMD,
-      W0,
-      R0, 
-      W1,
-      R1, 
-      W2,
-      R2, 
-      W3,
-      R3, 
-      WD0,
-      WD1,
-      WD2,
-      WD3,
-      RD0,
-      RD1,
-      RD2,
-      RD3
+      IDLE,W_CMD,R_CMD,
+      W0,W1,W2,W3,WD0,WD1,WD2,WD3,
+      R0,R1,R2,R3,RD0,RD1,RD2,RD3,
+      WF
    } sm_t;
-  
-   logic    [7:0] tx_data; 
-   logic          tx_valid;
-   logic          tx_accept;
+ 
+   logic                            timeout;
+   logic    [p_timeout_width-1:0]   timeout_inc;
+   logic    [p_timeout_width-1:0]   timeout_d;
+   logic    [p_timeout_width-1:0]   timeout_q;
+   logic                            timeout_en;
 
-   logic    [7:0] rx_data;
-   logic          rx_valid;
-  
-   sm_t           sm_d;
-   sm_t           sm_q;
-   logic          sm_en;
+   logic    [7:0]                   tx_data; 
+   logic                            tx_valid;
+   logic                            tx_accept;
 
-   logic          tx_valid_q;
-   logic          tx_valid_d;
+   logic    [7:0]                   rx_data;
+   logic                            rx_valid;
 
-   logic          rx_ack;
-   logic          rx_ack_d;
-   logic          rx_ack_q;
+   logic                            ack_and_sent;
+   sm_t                             sm_d;
+   sm_t                             sm_q;
+   logic                            sm_en;
+
+   logic                            tx_valid_q;
+   logic                            tx_valid_d;
+ 
+   logic                            rx_ack_d;
+   logic                            rx_ack_q;
+
+   ///////////////////////////////////////////////////////////////////
+   // Timeout
+
+   assign timeout     = (timeout_q == p_timeout);
+   assign timeout_inc = (timeout_q + 'd1);
+   assign timeout_d   = (sm_en) ? 'd0 : timeout_inc; 
+   assign timeout_en  = (sm_q != IDLE);  
+
+   always_ff@(posedge i_clk or negedge i_nrst) begin
+      if(!i_nrst)          timeout_q <= 'd0;
+      else if(timeout_en)  timeout_q <= timeout_d;
+   end 
 
    ///////////////////////////////////////////////////////////////////
    // State Machine
 
+   assign ack_and_sent = (rx_ack_q & ~tx_valid_q);
+
    assign sm_en = (sm_q == IDLE              ) ? i_valid: 
                   (sm_q inside {R_CMD, W_CMD}) ? tx_accept:
-                                                 rx_ack;
+                  (sm_q == WF                ) ? rx_ack_q:
+                                                 (timeout | ack_and_sent);
                   
    always_comb begin
       case(sm_q) 
          IDLE:       if(i_rnw)   sm_d = R_CMD;
                      else        sm_d = W_CMD;
          R_CMD:                  sm_d = R0;
-         R0:                     sm_d = R1; 
-         R1:                     sm_d = R2; 
-         R2:                     sm_d = R3; 
-         R3:                     sm_d = RD0; 
-         RD0:                    sm_d = RD0;
-         RD1:                    sm_d = RD0;
-         RD2:                    sm_d = RD0;
-         RD3:                    sm_d = IDLE;
+         R0:         if(timeout) sm_d = R_CMD;
+                     else        sm_d = R1;
+         R1:         if(timeout) sm_d = R_CMD;
+                     else        sm_d = R2; 
+         R2:         if(timeout) sm_d = R_CMD;
+                     else        sm_d = R3; 
+         R3:         if(timeout) sm_d = R_CMD;
+                     else        sm_d = RD0; 
+         RD0:        if(timeout) sm_d = R_CMD;
+                     else        sm_d = RD1;
+         RD1:        if(timeout) sm_d = R_CMD;
+                     else        sm_d = RD2;
+         RD2:        if(timeout) sm_d = R_CMD;
+                     else        sm_d = RD3;
+         RD3:        if(timeout) sm_d = IDLE;
+                     else        sm_d = R_CMD;
          W_CMD:                  sm_d = W0;
-         W0:                     sm_d = W1; 
-         W1:                     sm_d = W2; 
-         W2:                     sm_d = W3; 
-         W3:                     sm_d = WD0; 
-         WD0:                    sm_d = WD0;
-         WD1:                    sm_d = WD0;
-         WD2:                    sm_d = WD0;
-         WD3:                    sm_d = IDLE;
+         W0:         if(timeout) sm_d = W_CMD;
+                     else        sm_d = W1; 
+         W1:         if(timeout) sm_d = W_CMD;
+                     else        sm_d = W2;  
+         W2:         if(timeout) sm_d = W_CMD;
+                     else        sm_d = W3;  
+         W3:         if(timeout) sm_d = W_CMD;
+                     else        sm_d = WD0;  
+         WD0:        if(timeout) sm_d = W_CMD;
+                     else        sm_d = WD1; 
+         WD1:        if(timeout) sm_d = W_CMD;
+                     else        sm_d = WD2; 
+         WD2:        if(timeout) sm_d = W_CMD;
+                     else        sm_d = WD3; 
+         WD3:        if(timeout) sm_d = W_CMD;
+                     else        sm_d = WF;
+         WF:         if(timeout) sm_d = W_CMD;
+                     else        sm_d = IDLE;
          default:                sm_d = IDLE;
       endcase
    end 
@@ -94,6 +122,12 @@ module x_top_mem#(
       else if(sm_en) sm_q <= sm_d;
    end 
    
+   ///////////////////////////////////////////////////////////////////
+   // Mem interface
+
+   assign o_accept = (sm_q == WF) & rx_ack_q;
+
+
    ///////////////////////////////////////////////////////////////////
    // Tx
 
@@ -113,7 +147,7 @@ module x_top_mem#(
       endcase
    end
 
-   assign tx_valid_d = sm_en | (tx_valid_q & ~tx_accept);
+   assign tx_valid_d = (sm_en & ~(sm_q inside {WD3,WF})) | (tx_valid_q & ~tx_accept);
 
    always_ff@(posedge i_clk or negedge i_nrst) begin
       if(!i_nrst)    tx_valid_q <= 1'b0;
@@ -134,9 +168,8 @@ module x_top_mem#(
 
    ///////////////////////////////////////////////////////////////////
    // Rx
-
-   assign rx_ack   = (rx_data == 'd0 & rx_valid); 
-   assign rx_ack_d = (rx_ack_q) ? ~sm_en : rx_ack;   
+ 
+   assign rx_ack_d = (rx_ack_q) ? ~sm_en : rx_valid;   
 
    always_ff@(posedge i_clk or negedge i_nrst) begin
       if(!i_nrst)    rx_ack_q <= 1'b0;
