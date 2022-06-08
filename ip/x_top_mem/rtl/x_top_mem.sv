@@ -20,10 +20,17 @@ module x_top_mem#(
    localparam int p_timeout_width = $clog2(p_timeout);
 
    typedef enum logic [6:0] {
-      IDLE,W_CMD,R_CMD,
-      W0,W1,W2,W3,WD0,WD1,WD2,WD3,
-      R0,R1,R2,R3,RD0,RD1,RD2,RD3,
-      WF
+      IDLE,
+      W_CMD,W_CMD_A,
+      W0,W1,W2,W3,
+      W0_A,W1_A,W2_A,W3_A,
+      WD0,WD1,WD2,WD3,
+      WD0_A,WD1_A,WD2_A,WD3_A, 
+      R_CMD,R_CMD_A,
+      R0,R1,R2,R3,
+      R0_A,R1_A,R2_A,R3_A,
+      RD0,RD1,RD2,RD3,
+      RD0_A,RD1_A,RD2_A,RD3_A
    } sm_t;
  
    logic                            timeout;
@@ -39,80 +46,78 @@ module x_top_mem#(
    logic    [7:0]                   rx_data;
    logic                            rx_valid;
 
-   logic                            ack_and_sent;
+   logic                            sm_tx;
+   logic                            sm_ack;
    sm_t                             sm_d;
    sm_t                             sm_q;
    logic                            sm_en;
-
+   logic                            p0_sm_en;
+   logic                            p1_sm_en;
+   
    logic                            tx_valid_q;
    logic                            tx_valid_d;
- 
+
+   logic                            data_en;
+   logic    [23:0]                  data_d;
+   logic    [23:0]                  data_q;
+
    logic                            rx_ack_d;
    logic                            rx_ack_q;
 
    ///////////////////////////////////////////////////////////////////
-   // Timeout
-
-   assign timeout     = (timeout_q == p_timeout);
-   assign timeout_inc = (timeout_q + 'd1);
-   assign timeout_d   = (sm_en) ? 'd0 : timeout_inc; 
-   assign timeout_en  = (sm_q != IDLE);  
-
-   always_ff@(posedge i_clk or negedge i_nrst) begin
-      if(!i_nrst)          timeout_q <= 'd0;
-      else if(timeout_en)  timeout_q <= timeout_d;
-   end 
-
-   ///////////////////////////////////////////////////////////////////
    // State Machine
 
-   assign ack_and_sent = (rx_ack_q & ~tx_valid_q);
+   assign sm_tx = sm_q inside {R_CMD,R0,R1,R2,R3,RD0_A,RD1_A,RD2_A,RD3_A,
+                               W_CMD,W0,W1,W2,W3,WD0,WD1,WD2,WD3}; 
+     
+   assign sm_en = (sm_q == IDLE  ) ? i_valid: 
+                  (sm_tx         ) ? tx_accept: 
+                                     rx_valid;
+   assign p0_sm_en = sm_en;
 
-   assign sm_en = (sm_q == IDLE              ) ? i_valid: 
-                  (sm_q inside {R_CMD, W_CMD}) ? tx_accept:
-                  (sm_q == WF                ) ? rx_ack_q:
-                                                 (timeout | ack_and_sent);
-                  
+   always_ff@(posedge i_clk or negedge i_nrst) begin
+      if(!i_nrst) p1_sm_en <= 1'b0;
+      else        p1_sm_en <= p0_sm_en;
+   end   
+
    always_comb begin
       case(sm_q) 
          IDLE:       if(i_rnw)   sm_d = R_CMD;
                      else        sm_d = W_CMD;
-         R_CMD:                  sm_d = R0;
-         R0:         if(timeout) sm_d = R_CMD;
-                     else        sm_d = R1;
-         R1:         if(timeout) sm_d = R_CMD;
-                     else        sm_d = R2; 
-         R2:         if(timeout) sm_d = R_CMD;
-                     else        sm_d = R3; 
-         R3:         if(timeout) sm_d = R_CMD;
-                     else        sm_d = RD0; 
-         RD0:        if(timeout) sm_d = R_CMD;
-                     else        sm_d = RD1;
-         RD1:        if(timeout) sm_d = R_CMD;
-                     else        sm_d = RD2;
-         RD2:        if(timeout) sm_d = R_CMD;
-                     else        sm_d = RD3;
-         RD3:        if(timeout) sm_d = IDLE;
-                     else        sm_d = R_CMD;
-         W_CMD:                  sm_d = W0;
-         W0:         if(timeout) sm_d = W_CMD;
-                     else        sm_d = W1; 
-         W1:         if(timeout) sm_d = W_CMD;
-                     else        sm_d = W2;  
-         W2:         if(timeout) sm_d = W_CMD;
-                     else        sm_d = W3;  
-         W3:         if(timeout) sm_d = W_CMD;
-                     else        sm_d = WD0;  
-         WD0:        if(timeout) sm_d = W_CMD;
-                     else        sm_d = WD1; 
-         WD1:        if(timeout) sm_d = W_CMD;
-                     else        sm_d = WD2; 
-         WD2:        if(timeout) sm_d = W_CMD;
-                     else        sm_d = WD3; 
-         WD3:        if(timeout) sm_d = W_CMD;
-                     else        sm_d = WF;
-         WF:         if(timeout) sm_d = W_CMD;
-                     else        sm_d = IDLE;
+         R_CMD:                  sm_d = R_CMD_A; 
+         R_CMD_A:                sm_d = R0;    
+         R0:                     sm_d = R0_A;
+         R0_A:                   sm_d = R1; 
+         R1:                     sm_d = R1_A;
+         R1_A:                   sm_d = R2;
+         R2:                     sm_d = R2_A;
+         R2_A:                   sm_d = R3;
+         R3:                     sm_d = R3_A;
+         R3_A:                   sm_d = RD0;
+         RD0:                    sm_d = RD0_A;
+         RD0_A:                  sm_d = RD1;
+         RD1:                    sm_d = RD1_A;
+         RD1_A:                  sm_d = RD2;
+         RD2:                    sm_d = RD2_A;
+         RD2_A:                  sm_d = RD3;
+         RD3:                    sm_d = RD3_A;
+         W_CMD:                  sm_d = W_CMD_A; 
+         W_CMD_A:                sm_d = W0;    
+         W0:                     sm_d = W0_A;
+         W0_A:                   sm_d = W1; 
+         W1:                     sm_d = W1_A;
+         W1_A:                   sm_d = W2;
+         W2:                     sm_d = W2_A;
+         W2_A:                   sm_d = W3;
+         W3:                     sm_d = W3_A;
+         W3_A:                   sm_d = WD0;
+         WD0:                    sm_d = WD0_A;
+         WD0_A:                  sm_d = WD1;
+         WD1:                    sm_d = WD1_A;
+         WD1_A:                  sm_d = WD2;
+         WD2:                    sm_d = WD2_A;
+         WD2_A:                  sm_d = WD3;
+         WD3:                    sm_d = WD3_A;
          default:                sm_d = IDLE;
       endcase
    end 
@@ -125,16 +130,26 @@ module x_top_mem#(
    ///////////////////////////////////////////////////////////////////
    // Mem interface
 
-   assign o_accept = (sm_q == WF) & rx_ack_q;
+   assign o_accept = (sm_q inside {WD3_A,RD3_A}) & sm_en;
 
+   assign data_en = (sm_q inside {RD0, RD1, RD2}) & rx_valid;
 
+   assign data_d = {rx_data,data_q[23:8]};
+   
+   always_ff@(posedge i_clk or negedge i_nrst) begin
+      if(!i_nrst)       data_q <= 'd0;
+      else if(data_en)  data_q <= data_d;
+   end
+
+   assign o_data = {rx_data,data_q};
+  
    ///////////////////////////////////////////////////////////////////
    // Tx
 
    always_comb begin
       case(sm_q) 
-         W_CMD:   tx_data = 8'b00000000;
-         R_CMD:   tx_data = 8'h00000001; 
+         W_CMD:   tx_data = 8'h0F;
+         R_CMD:   tx_data = 8'hF0; 
          W0,R0:   tx_data = i_addr[7:0];
          W1,R1:   tx_data = i_addr[15:8];
          W2,R2:   tx_data = i_addr[23:16];
@@ -147,12 +162,7 @@ module x_top_mem#(
       endcase
    end
 
-   assign tx_valid_d = (sm_en & ~(sm_q inside {WD3,WF})) | (tx_valid_q & ~tx_accept);
-
-   always_ff@(posedge i_clk or negedge i_nrst) begin
-      if(!i_nrst)    tx_valid_q <= 1'b0;
-      else           tx_valid_q <= tx_valid_d;
-   end 
+   assign tx_valid = sm_tx;
    
    x_top_uart_tx #(
       .p_clk_hz   (p_clk_hz   ),
@@ -162,7 +172,7 @@ module x_top_mem#(
       .i_nrst     (i_nrst     ),
       .i_data     (tx_data    ),
       .o_tx       (o_tx       ),
-      .i_valid    (tx_valid_q ),
+      .i_valid    (tx_valid   ),
       .o_accept   (tx_accept  )
    );
 

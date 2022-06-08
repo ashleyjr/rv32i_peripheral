@@ -53,8 +53,25 @@ int main(int argc, char** argv, char** env) {
          case 600000:   
          case 700000:   
          case 800000:   
-         case 900000:  
+         case 900000: 
+         case 1100000:
+         case 1200000:
+         case 1300000:
+         case 1400000:
+         case 1500000:
                         dut->i_uart_valid = 1;
+                        break;
+         case 1600000:  dut->i_uart_valid = 1;
+                        dut->i_uart_data  = 0xEF;
+                        break;
+         case 1700000:  dut->i_uart_valid = 1;
+                        dut->i_uart_data  = 0xBE;
+                        break;
+         case 1800000:  dut->i_uart_valid = 1;
+                        dut->i_uart_data  = 0xAD;
+                        break;
+         case 1900000:  dut->i_uart_valid = 1;
+                        dut->i_uart_data  = 0xDE;
                         break;
          default:       dut->i_uart_valid = 0;
       }
