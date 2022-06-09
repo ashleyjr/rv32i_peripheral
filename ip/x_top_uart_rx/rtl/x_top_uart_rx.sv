@@ -110,7 +110,9 @@ module x_top_uart_rx#(
    // Flop RX
  
    assign data_d  = {p2_rx, data_q[7:1]};
-   assign data_en = ~(sm_uart_q inside {IDLE, START, P0}) & 
+   assign data_en = ~(  (sm_uart_q == IDLE)|
+                        (sm_uart_q == START)|
+                        (sm_uart_q == P0)) & 
                       sm_uart_en;
    always_ff@(posedge i_clk or negedge i_nrst) begin
       if(!i_nrst)       data_q <= 'd0;
