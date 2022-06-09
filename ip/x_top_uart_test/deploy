@@ -4,5 +4,5 @@ echo "Packing..."
 icepack x_top_uart_test.asc x_top_uart_test.bin
 echo "========================================================"
 echo "Writing..."
-sudo iceprog  -S x_top_uart_test.bin
+iceprog  -S x_top_uart_test.bin
 echo "========================================================"
