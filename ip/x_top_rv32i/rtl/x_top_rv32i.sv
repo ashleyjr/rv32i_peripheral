@@ -122,7 +122,9 @@ module x_top_rv32i(
          FETCH:   sm_d = DECODE; 
          DECODE:  case(is_q.unknown.opcode)
                      5'b00100: sm_d = EXECUTE_I;           
+                     default:;
                   endcase
+         default:;
       endcase
    end
 
@@ -151,13 +153,14 @@ module x_top_rv32i(
    assign alu_b = {20'd0, is_q.i.imm_11_0};
 
    always_comb begin
+      alu_c = alu_a & alu_b;
       case(is_q.i.funct3)
-         3'b000: alu_c = alu_a + alu_b;
+         3'b000:     alu_c = alu_a + alu_b;
          3'b010,
-         3'b011: alu_c = (alu_a < alu_b) ?  32'd1 : 32'd0; 
-         3'b100: alu_c = alu_a ^ alu_b;
-         3'b110: alu_c = alu_a | alu_b;
-         3'b111: alu_c = alu_a & alu_b;
+         3'b011:     alu_c = (alu_a < alu_b) ?  32'd1 : 32'd0; 
+         3'b100:     alu_c = alu_a ^ alu_b;
+         3'b110:     alu_c = alu_a | alu_b;
+         default:; 
       endcase
    end
 
