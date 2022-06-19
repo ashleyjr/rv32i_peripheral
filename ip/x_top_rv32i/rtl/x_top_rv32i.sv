@@ -3,7 +3,8 @@ module x_top_rv32i(
    input    logic          i_nrst, 
    input    logic [31:0]   i_data, 
    input    logic          i_accept,
-   output   logic          o_valid,    
+   output   logic          o_valid,  
+   output   logic [31:0]   o_addr,
    output   logic [31:0]   o_data
 );
    
