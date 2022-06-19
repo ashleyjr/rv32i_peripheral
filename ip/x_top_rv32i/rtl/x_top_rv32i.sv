@@ -3,7 +3,6 @@ module x_top_rv32i(
    input    logic          i_nrst, 
    input    logic [31:0]   i_data, 
    input    logic          i_accept,
-   output   logic          o_accept,
    output   logic          o_valid,    
    output   logic [31:0]   o_data
 );
@@ -141,6 +140,8 @@ module x_top_rv32i(
       rf_d[is_q.i.rd] = alu_c;  
    end
 
+   assign rf_en = (sm_q == EXECUTE_I); 
+
    always_ff@(posedge i_clk or negedge i_nrst) begin
       if(!i_nrst)    rf_q <= 'd0;
       else if(rf_en) rf_q <= rf_d;
@@ -166,7 +167,11 @@ module x_top_rv32i(
 
    ///////////////////////////////////////////////////////////////////
    // Program Counter
-   
+ 
+   assign pc_d = pc_q + 'd4;
+
+   assign pc_en = (sm_q == EXECUTE_I);
+
    always_ff@(posedge i_clk or negedge i_nrst) begin
       if(!i_nrst)    pc_q <= 'd0;
       else if(pc_en) pc_q <= pc_d;
