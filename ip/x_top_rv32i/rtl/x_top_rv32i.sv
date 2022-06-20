@@ -88,7 +88,8 @@ module x_top_rv32i(
       EXECUTE_S,
       EXECUTE_B,
       EXECUTE_U,
-      EXECUTE_J
+      EXECUTE_J,
+      EXECUTE_L
    } sm_t; 
 
    logic          sm_en;
@@ -96,7 +97,7 @@ module x_top_rv32i(
    sm_t           sm_d;
 
    logic [31:0]   pc_next;
-   logic [31:0]   pc_imm;
+   logic signed [31:0]   pc_imm;
    logic [31:0]   pc_jump;
    logic          pc_en;
    logic [31:0]   pc_q;
@@ -131,6 +132,7 @@ module x_top_rv32i(
          DECODE:     sm_en = 1'b1; 
          EXECUTE_I:  sm_en = 1'b1;
          EXECUTE_J:  sm_en = 1'b1;
+         EXECUTE_L:  sm_en = 1'b1;
          EXECUTE_S:  sm_en = i_accept;
          default:;
       endcase
@@ -143,7 +145,8 @@ module x_top_rv32i(
          DECODE:  case(is_q.unknown.opcode)
                      5'b00100: sm_d = EXECUTE_I;          
                      5'b11011: sm_d = EXECUTE_J;
-                     5'b01000: sm_d = EXECUTE_S;                     
+                     5'b01000: sm_d = EXECUTE_S;                    
+                     5'b00000: sm_d = EXECUTE_L;                     
                      default:;
                   endcase
          default:;
@@ -215,7 +218,7 @@ module x_top_rv32i(
    // Program Counter
 
    assign pc_next = pc_q + 'd4;
-   assign pc_imm  = {   11'd0,
+   assign pc_imm  = {   {11{is_q.j.imm_20}},
                         is_q.j.imm_20,
                         is_q.j.imm_19_12,
                         is_q.j.imm_11,
@@ -225,6 +228,7 @@ module x_top_rv32i(
    assign pc_d    = (sm_q == EXECUTE_J) ? pc_jump : pc_next;
    assign pc_en   = (sm_q == EXECUTE_I)|
                     (sm_q == EXECUTE_J)|
+                    (sm_q == EXECUTE_L)|
                     (sm_q == EXECUTE_S);
 
    always_ff@(posedge i_clk or negedge i_nrst) begin
@@ -246,8 +250,10 @@ module x_top_rv32i(
    ///////////////////////////////////////////////////////////////////
    // Drive Memory Interface
 
-   assign o_rnw   = 1'b1;
+   assign o_rnw   = (sm_q == FETCH)|
+                    (sm_q == EXECUTE_L);
    assign o_valid = (sm_q == FETCH)| 
+                    (sm_q == EXECUTE_L)|
                     (sm_q == EXECUTE_S);
    assign o_addr  = (sm_q == FETCH) ? pc_q : alu_c;
    assign o_data  = (sm_q == FETCH) ? pc_q : rf_q[is_q.s.rs2];

@@ -43,6 +43,8 @@ int main(int argc, char** argv, char** env) {
 
    dut->i_clk = 0;
    dut->i_nrst = 0;
+   
+   std::cout << "sim_time   addr         data\n\r";
    while (sim_time < MAX_SIM_TIME) {
      
       dut->i_clk = 1; 
@@ -57,27 +59,23 @@ int main(int argc, char** argv, char** env) {
          // TODO: Should be byte addressable
          dut->i_data = 0; 
          if(dut->i_accept){
-            std::cout << "0x";
+            std::cout << "@";
             std::cout << std::setw(8) << std::setfill('0');
-            std::cout << std::hex << sim_time;
+            std::cout << std::dec << sim_time << ": 0x";
             if(dut->o_rnw){
-               dut->i_data = mem[dut->o_addr >> 2];
-               std::cout << " RD: ";
-               std::cout << "0x";
                std::cout << std::setw(8) << std::setfill('0');
                std::cout << std::hex << dut->o_addr;
-               std::cout << " < 0x";
-               std::cout << std::setw(8) << std::setfill('0');
-               std::cout << std::hex << dut->i_data;
+               std::cout << " > 0x";
+               dut->i_data = mem[dut->o_addr >> 2]; 
+               std::cout << std::setw(8) << std::setfill('0'); 
+               std::cout << std::hex << dut->i_data; 
             }else{
-               mem[dut->o_addr >> 2] = dut->o_data;
-               std::cout << " WR: ";
-               std::cout << "0x";
                std::cout << std::setw(8) << std::setfill('0');
                std::cout << dut->o_addr;
-               std::cout << " > 0x";
+               std::cout << " < 0x";
                std::cout << std::setw(8) << std::setfill('0');
                std::cout << std::hex << dut->o_data;
+               mem[dut->o_addr >> 2] = dut->o_data; 
             }
             std::cout << "\n\r";
          }
@@ -86,8 +84,7 @@ int main(int argc, char** argv, char** env) {
       dut->i_clk = 0; 
       dut->eval();
       m_trace->dump(sim_time);
-      sim_time++;
-      
+      sim_time++; 
    }
    
    m_trace->close();
