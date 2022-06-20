@@ -1,0 +1,1 @@
+gtkwave waveform.vcd -S etc/signals.tcl

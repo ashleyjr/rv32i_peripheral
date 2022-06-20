@@ -4,6 +4,7 @@
 #include <sstream>
 #include <string>
 #include <list>
+#include <iomanip>
 #include <verilated.h>
 #include <verilated_vcd_c.h>
 #include "Vx_top_rv32i.h"
@@ -44,22 +45,49 @@ int main(int argc, char** argv, char** env) {
    dut->i_nrst = 0;
    while (sim_time < MAX_SIM_TIME) {
      
+      dut->i_clk = 1; 
+      dut->eval();
+      m_trace->dump(sim_time);
+      sim_time++;
+      
       if(sim_time > 10){
          dut->i_nrst = 1;
+         dut->i_accept = dut->o_valid;
+         
+         // TODO: Should be byte addressable
+         dut->i_data = 0; 
+         if(dut->i_accept){
+            std::cout << "0x";
+            std::cout << std::setw(8) << std::setfill('0');
+            std::cout << std::hex << sim_time;
+            if(dut->o_rnw){
+               dut->i_data = mem[dut->o_addr >> 2];
+               std::cout << " RD: ";
+               std::cout << "0x";
+               std::cout << std::setw(8) << std::setfill('0');
+               std::cout << std::hex << dut->o_addr;
+               std::cout << " < 0x";
+               std::cout << std::setw(8) << std::setfill('0');
+               std::cout << std::hex << dut->i_data;
+            }else{
+               mem[dut->o_addr >> 2] = dut->o_data;
+               std::cout << " WR: ";
+               std::cout << "0x";
+               std::cout << std::setw(8) << std::setfill('0');
+               std::cout << dut->o_addr;
+               std::cout << " > 0x";
+               std::cout << std::setw(8) << std::setfill('0');
+               std::cout << std::hex << dut->o_data;
+            }
+            std::cout << "\n\r";
+         }
       }
 
-      dut->i_accept = dut->o_valid;
-      dut->i_data = mem[dut->o_addr]; 
+      dut->i_clk = 0; 
+      dut->eval();
+      m_trace->dump(sim_time);
+      sim_time++;
       
-      //std::cout << dut->o_addr << "\n\r";
-      //std::cout << dut->i_data << "\n\r";
-
-      for(int i=0;i<2;i++){
-         dut->i_clk ^= 1; 
-         dut->eval();
-         m_trace->dump(sim_time);
-         sim_time++;
-      }
    }
    
    m_trace->close();

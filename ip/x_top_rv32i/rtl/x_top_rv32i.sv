@@ -4,6 +4,7 @@ module x_top_rv32i(
    input    logic [31:0]   i_data, 
    input    logic          i_accept,
    output   logic          o_valid,  
+   output   logic          o_rnw,
    output   logic [31:0]   o_addr,
    output   logic [31:0]   o_data
 );
@@ -26,7 +27,7 @@ module x_top_rv32i(
    } is_i_t;
 
    typedef struct packed {
-      logic [6:0]    imm_11_0;
+      logic [6:0]    imm_11_5;
       logic [4:0]    rs2;
       logic [4:0]    rs1;
       logic [2:0]    funct3;
@@ -43,11 +44,20 @@ module x_top_rv32i(
       logic [6:0]    opcode;
    } is_b_t;
 
-   typedef struct packed { 
-      logic [19:0]   imm;
+   typedef struct packed {  
+      logic [19:0]   imm_31_12;
       logic [4:0]    rd;
       logic [6:0]    opcode;
-   } is_u_j_t;
+   } is_u_t;
+   
+   typedef struct packed {  
+      logic          imm_20;
+      logic [9:0]    imm_10_1;
+      logic          imm_11;
+      logic [7:0]    imm_19_12;
+      logic [4:0]    rd;
+      logic [6:0]    opcode;
+   } is_j_t;
 
    typedef struct packed {
       logic [24:0]   unknown;    
@@ -60,7 +70,8 @@ module x_top_rv32i(
       is_i_t         i;
       is_s_t         s;
       is_b_t         b;
-      is_u_j_t       u_j;
+      is_u_t         u;
+      is_j_t         j;
       is_unknown_t   unknown;
       logic [31:0]   data;
    } is_t;
@@ -84,6 +95,9 @@ module x_top_rv32i(
    sm_t           sm_q;
    sm_t           sm_d;
 
+   logic [31:0]   pc_next;
+   logic [31:0]   pc_imm;
+   logic [31:0]   pc_jump;
    logic          pc_en;
    logic [31:0]   pc_q;
    logic [31:0]   pc_d;
@@ -96,6 +110,10 @@ module x_top_rv32i(
    logic [31:0] [31:0]  rf_d;
    logic [31:0] [31:0]  rf_q;
 
+   logic                alu_add;
+   logic                alu_lt;
+   logic                alu_xor;
+   logic                alu_or;
    logic [31:0]         alu_a;
    logic [31:0]         alu_b;
    logic [31:0]         alu_c;
@@ -112,6 +130,8 @@ module x_top_rv32i(
          FETCH:      sm_en = i_accept;  
          DECODE:     sm_en = 1'b1; 
          EXECUTE_I:  sm_en = 1'b1;
+         EXECUTE_J:  sm_en = 1'b1;
+         EXECUTE_S:  sm_en = i_accept;
          default:;
       endcase
    end
@@ -121,7 +141,9 @@ module x_top_rv32i(
       case(sm_q)
          FETCH:   sm_d = DECODE; 
          DECODE:  case(is_q.unknown.opcode)
-                     5'b00100: sm_d = EXECUTE_I;           
+                     5'b00100: sm_d = EXECUTE_I;          
+                     5'b11011: sm_d = EXECUTE_J;
+                     5'b01000: sm_d = EXECUTE_S;                     
                      default:;
                   endcase
          default:;
@@ -138,7 +160,11 @@ module x_top_rv32i(
 
    always_comb begin
       rf_d = rf_q;
-      rf_d[is_q.i.rd] = alu_c;  
+      case(sm_q)
+         EXECUTE_I: rf_d[is_q.i.rd] = alu_c;  
+         EXECUTE_J: rf_d[is_q.j.rd] = pc_d;  
+         default:;
+      endcase
    end
 
    assign rf_en = (sm_q == EXECUTE_I); 
@@ -152,26 +178,54 @@ module x_top_rv32i(
    // ALU
 
    assign alu_a = rf_q[is_q.i.rs1];
-   assign alu_b = {20'd0, is_q.i.imm_11_0};
+      
+   always_comb begin
+      alu_b = 'd0; 
+      case(sm_q)
+         EXECUTE_S: alu_b[11:0] = {is_q.s.imm_11_5, is_q.s.imm_4_0};
+         EXECUTE_I: alu_b[11:0] = is_q.i.imm_11_0;
+         default:;
+      endcase
+   end
 
+   assign alu_add = (sm_q == EXECUTE_S) | 
+                   ((sm_q == EXECUTE_I) & (is_q.i.funct3 == 3'b00));
+
+   assign alu_lt  = (sm_q == EXECUTE_I) & (
+                        (is_q.i.funct3 == 3'b010) |
+                        (is_q.i.funct3 == 3'b011)
+                     );
+
+   assign alu_xor = (sm_q == EXECUTE_I) & (is_q.i.funct3 == 3'b100);
+   
+   assign alu_or = (sm_q == EXECUTE_I) & (is_q.i.funct3 == 3'b110);
+   
    always_comb begin
       alu_c = alu_a & alu_b;
-      case(is_q.i.funct3)
-         3'b000:     alu_c = alu_a + alu_b;
-         3'b010,
-         3'b011:     alu_c = (alu_a < alu_b) ?  32'd1 : 32'd0; 
-         3'b100:     alu_c = alu_a ^ alu_b;
-         3'b110:     alu_c = alu_a | alu_b;
+      case(1'b1)
+         alu_add:    alu_c = alu_a + alu_b;
+         alu_lt:     alu_c = (alu_a < alu_b) ?  32'd1 : 32'd0; 
+         alu_xor:    alu_c = alu_a ^ alu_b;
+         alu_or:     alu_c = alu_a | alu_b;
          default:; 
       endcase
    end
 
    ///////////////////////////////////////////////////////////////////
    // Program Counter
- 
-   assign pc_d = pc_q + 'd4;
 
-   assign pc_en = (sm_q == EXECUTE_I);
+   assign pc_next = pc_q + 'd4;
+   assign pc_imm  = {   11'd0,
+                        is_q.j.imm_20,
+                        is_q.j.imm_19_12,
+                        is_q.j.imm_11,
+                        is_q.j.imm_10_1,
+                        1'b0};
+   assign pc_jump = pc_q + pc_imm; 
+   assign pc_d    = (sm_q == EXECUTE_J) ? pc_jump : pc_next;
+   assign pc_en   = (sm_q == EXECUTE_I)|
+                    (sm_q == EXECUTE_J)|
+                    (sm_q == EXECUTE_S);
 
    always_ff@(posedge i_clk or negedge i_nrst) begin
       if(!i_nrst)    pc_q <= 'd0;
@@ -192,7 +246,10 @@ module x_top_rv32i(
    ///////////////////////////////////////////////////////////////////
    // Drive Memory Interface
 
-   assign o_valid = (sm_q == FETCH);
-   assign o_data  = (sm_q == FETCH) ? pc_q : 'd0;
+   assign o_rnw   = 1'b1;
+   assign o_valid = (sm_q == FETCH)| 
+                    (sm_q == EXECUTE_S);
+   assign o_addr  = (sm_q == FETCH) ? pc_q : alu_c;
+   assign o_data  = (sm_q == FETCH) ? pc_q : rf_q[is_q.s.rs2];
 
 endmodule
