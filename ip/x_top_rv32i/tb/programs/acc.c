@@ -1,7 +1,10 @@
-void main(void){
-   int i;
-   i = 0;
+void main(void){ 
+   unsigned int data;
+   unsigned int * addr;
+   *addr = 0x30000000;
+   data = 0;
    for(;;){
-      i++;
+      data++;
+      addr = data;
    }
 }

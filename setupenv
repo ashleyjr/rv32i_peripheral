@@ -1,0 +1,2 @@
+RV_ROOT=/opt/riscv32i/bin
+PATH=$PATH:$RV_ROOT
