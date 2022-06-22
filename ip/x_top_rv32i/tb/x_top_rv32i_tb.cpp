@@ -30,15 +30,17 @@ int main(int argc, char** argv, char** env) {
    
    // Load the memory file 
    unsigned int mem[MEM_SIZE]; 
-   unsigned int i = 0;
+   unsigned int addr[MEM_SIZE]; 
+   unsigned int usage = 0;
    std::ifstream infile(argv[1]);
    std::string line; 
    while(std::getline(infile, line)){
       std::istringstream iss(line);  
       std::stringstream ss;
       ss << std::hex << line;
-      ss >> mem[i];
-      i++;
+      ss >> mem[usage];
+      addr[usage] = usage;
+      usage++;
    }
 
    dut->i_clk = 0;
@@ -66,16 +68,33 @@ int main(int argc, char** argv, char** env) {
                std::cout << std::setw(8) << std::setfill('0');
                std::cout << std::hex << dut->o_addr;
                std::cout << " > 0x";
-               dut->i_data = mem[dut->o_addr >> 2]; 
+               for(int i=0;i<usage;i++){
+                  if(addr[i] == (dut->o_addr >> 2)){ 
+                     dut->i_data = mem[i];
+                     break;
+                  }
+               } 
                std::cout << std::setw(8) << std::setfill('0'); 
                std::cout << std::hex << dut->i_data; 
             }else{
                std::cout << std::setw(8) << std::setfill('0');
-               std::cout << dut->o_addr;
+               std::cout << std::hex << dut->o_addr;
                std::cout << " < 0x";
                std::cout << std::setw(8) << std::setfill('0');
                std::cout << std::hex << dut->o_data;
-               mem[dut->o_addr >> 2] = dut->o_data; 
+               bool found = false;
+               for(int i=0;i<usage;i++){
+                  if(addr[i] == (dut->o_addr >> 2)){
+                     mem[i] = dut->i_data;
+                     found = true;
+                     break;
+                  }
+               }
+               if(!found){
+                  addr[usage] = (dut->o_addr >> 2);
+                  mem[usage] = dut->i_data;
+                  usage++;
+               } 
             }
             std::cout << "\n\r";
          }
