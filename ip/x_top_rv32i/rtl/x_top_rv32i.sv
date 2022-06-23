@@ -146,6 +146,7 @@ module x_top_rv32i(
          EXECUTE_L:  sm_en = i_accept;
          EXECUTE_S:  sm_en = i_accept;
          EXECUTE_U:  sm_en = 1'b1;
+         EXECUTE_R:  sm_en = 1'b1;
          default:;
       endcase
    end
@@ -160,6 +161,7 @@ module x_top_rv32i(
                      5'b01000: sm_d = EXECUTE_S;                    
                      5'b00000: sm_d = EXECUTE_L;                    
                      5'b01101: sm_d = EXECUTE_U;
+                     5'b01100: sm_d = EXECUTE_R;
                      default:;
                   endcase
          default:;
@@ -186,6 +188,7 @@ module x_top_rv32i(
    always_comb begin
       rf_data = 'd0;
       case(sm_q)
+         EXECUTE_R,
          EXECUTE_I: rf_data = alu_c;  
          EXECUTE_J: rf_data = pc_d; 
          EXECUTE_L: rf_data = i_data; 
@@ -201,6 +204,7 @@ module x_top_rv32i(
    
    assign rf_en = (sm_q == EXECUTE_I)|
                   (sm_q == EXECUTE_L)|
+                  (sm_q == EXECUTE_R)|
                   (sm_q == EXECUTE_U); 
 
    always_ff@(posedge i_clk or negedge i_nrst) begin
@@ -222,6 +226,7 @@ module x_top_rv32i(
                                  is_q.s.imm_4_0};
          EXECUTE_L,
          EXECUTE_I: alu_b = {{20{is_q.i.imm_11_0[11]}},is_q.i.imm_11_0};
+         EXECUTE_R: alu_b = rf_q[rs2];
          default:;
       endcase
    end
@@ -235,9 +240,11 @@ module x_top_rv32i(
                         (is_q.i.funct3 == 3'b011)
                      );
 
-   assign alu_xor = (sm_q == EXECUTE_I) & (is_q.i.funct3 == 3'b100);
+   assign alu_xor = ((sm_q == EXECUTE_I) | (sm_q == EXECUTE_R)) & 
+                     (is_q.i.funct3 == 3'b100);
    
-   assign alu_or = (sm_q == EXECUTE_I) & (is_q.i.funct3 == 3'b110);
+   assign alu_or = ((sm_q == EXECUTE_I) | (sm_q == EXECUTE_R)) & 
+                    (is_q.i.funct3 == 3'b110);
    
    always_comb begin
       alu_c = alu_a & alu_b;
