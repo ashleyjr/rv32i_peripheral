@@ -10,7 +10,7 @@
 #include "Vx_top_rv32i.h"
 
 #define MEM_SIZE     0x10000
-#define MAX_SIM_TIME 100
+#define MAX_SIM_TIME 1000
 
 vluint64_t sim_time = 0;
 
@@ -56,15 +56,28 @@ int main(int argc, char** argv, char** env) {
       
       if(sim_time > 10){
          dut->i_nrst = 1;
-         dut->i_accept = dut->o_valid;
+         dut->i_accept = 0;
          
          // TODO: Should be byte addressable
          dut->i_data = 0; 
-         if(dut->i_accept){
+         if(dut->o_valid){
             std::cout << "@";
             std::cout << std::setw(8) << std::setfill('0');
             std::cout << std::dec << sim_time << ": 0x";
             if(dut->o_rnw){
+               // Read
+               
+               dut->i_clk = 0; 
+               dut->eval();
+               m_trace->dump(sim_time);
+               sim_time++; 
+               
+               dut->i_clk = 1; 
+               dut->eval();
+               m_trace->dump(sim_time);
+               sim_time++; 
+               
+               dut->i_accept = 1;
                std::cout << std::setw(8) << std::setfill('0');
                std::cout << std::hex << dut->o_addr;
                std::cout << " > 0x";
@@ -77,6 +90,8 @@ int main(int argc, char** argv, char** env) {
                std::cout << std::setw(8) << std::setfill('0'); 
                std::cout << std::hex << dut->i_data; 
             }else{
+               // Write
+               dut->i_accept = 1;
                std::cout << std::setw(8) << std::setfill('0');
                std::cout << std::hex << dut->o_addr;
                std::cout << " < 0x";
@@ -85,14 +100,14 @@ int main(int argc, char** argv, char** env) {
                bool found = false;
                for(int i=0;i<usage;i++){
                   if(addr[i] == (dut->o_addr >> 2)){
-                     mem[i] = dut->i_data;
+                     mem[i] = dut->o_data;
                      found = true;
                      break;
                   }
-               }
+               } 
                if(!found){
                   addr[usage] = (dut->o_addr >> 2);
-                  mem[usage] = dut->i_data;
+                  mem[usage] = dut->o_data;
                   usage++;
                } 
             }

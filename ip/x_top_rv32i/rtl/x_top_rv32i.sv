@@ -143,7 +143,7 @@ module x_top_rv32i(
          DECODE:     sm_en = 1'b1; 
          EXECUTE_I:  sm_en = 1'b1;
          EXECUTE_J:  sm_en = 1'b1;
-         EXECUTE_L:  sm_en = 1'b1;
+         EXECUTE_L:  sm_en = i_accept;
          EXECUTE_S:  sm_en = i_accept;
          EXECUTE_U:  sm_en = 1'b1;
          default:;
@@ -188,6 +188,7 @@ module x_top_rv32i(
       case(sm_q)
          EXECUTE_I: rf_data = alu_c;  
          EXECUTE_J: rf_data = pc_d; 
+         EXECUTE_L: rf_data = i_data; 
          EXECUTE_U: rf_data = {is_q.u.imm_31_12,12'd0}; 
          default:;
       endcase
@@ -210,19 +211,23 @@ module x_top_rv32i(
    ///////////////////////////////////////////////////////////////////
    // ALU
 
-   assign alu_sel = (sm_q == EXECUTE_S) ? rs2 : rs1;
+   assign alu_sel = rs1;
    assign alu_a   = rf_q[alu_sel];
       
    always_comb begin
       alu_b = 'd0; 
       case(sm_q)
-         EXECUTE_S: alu_b[11:0] = {is_q.s.imm_11_5, is_q.s.imm_4_0};
+         EXECUTE_S: alu_b = {{20{is_q.s.imm_11_5[6]}},
+                                 is_q.s.imm_11_5, 
+                                 is_q.s.imm_4_0};
+         EXECUTE_L,
          EXECUTE_I: alu_b = {{20{is_q.i.imm_11_0[11]}},is_q.i.imm_11_0};
          default:;
       endcase
    end
 
    assign alu_add = (sm_q == EXECUTE_S) | 
+                    (sm_q == EXECUTE_L) | 
                    ((sm_q == EXECUTE_I) & (is_q.i.funct3 == 3'b00));
 
    assign alu_lt  = (sm_q == EXECUTE_I) & (
@@ -255,13 +260,10 @@ module x_top_rv32i(
                         is_q.j.imm_11,
                         is_q.j.imm_10_1,
                         1'b0};
-   assign pc_jump = pc_q + pc_imm; 
+   assign pc_jump = pc_q + pc_imm - 'd4; 
    assign pc_d    = (sm_q == EXECUTE_J) ? pc_jump : pc_next;
-   assign pc_en   = (sm_q == EXECUTE_I)|
-                    (sm_q == EXECUTE_J)|
-                    (sm_q == EXECUTE_L)|
-                    (sm_q == EXECUTE_U)|
-                    (sm_q == EXECUTE_S);
+   assign pc_en   = ((sm_q == FETCH) & sm_en)|
+                     (sm_q == EXECUTE_J) ;
 
    always_ff@(posedge i_clk or negedge i_nrst) begin
       if(!i_nrst)    pc_q <= 'd0;
@@ -289,8 +291,8 @@ module x_top_rv32i(
                     (sm_q == EXECUTE_S);
    assign o_addr  = (sm_q == FETCH) ? pc_q : alu_c;
    
-   assign o_data  = (sm_q == FETCH     ) ? pc_q : 
-                    (sm_q == EXECUTE_S ) ? rf_q[rs1]:
-                                           rf_q[rs2];
+   assign o_data  = (sm_q == FETCH) ? pc_q : 
+                    (sm_q == EXECUTE_S) ? rf_q[rs2] : 
+                                       rf_q[rs1];
 
 endmodule
