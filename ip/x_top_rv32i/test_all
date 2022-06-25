@@ -1,0 +1,6 @@
+#!/bin/bash
+
+./run tb/programs/loop.mem | FileCheck-14 tb/programs/loop.c
+./run tb/programs/acc.mem | FileCheck-14 tb/programs/acc.c
+#./run tb/programs/switch.mem | FileCheck-14 tb/programs/switch.c
+./run tb/programs/logical.mem | FileCheck-14 tb/programs/logical.c

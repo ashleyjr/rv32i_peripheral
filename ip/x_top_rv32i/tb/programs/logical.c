@@ -9,3 +9,8 @@ void main(){
    *addr = a | b;
    for(;;);
 }
+
+
+// CHECK: {{.*}}0x30000000 < 0xaaaa0000
+// CHECK: {{.*}}0x30000000 < 0x5500ffaa
+// CHECK: {{.*}}0x30000000 < 0xffaaffaa

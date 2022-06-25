@@ -12,3 +12,8 @@ void main(){
    }
    for(;;);
 }
+
+// CHECK: {{.*}}0x30000000 < 0xaaaaaaaa
+// CHECK: {{.*}}0x30000000 < 0xbbbbbbbb
+// CHECK: {{.*}}0x30000000 < 0xcccccccc
+// CHECK: {{.*}}0x30000000 < 0xdddddddd
