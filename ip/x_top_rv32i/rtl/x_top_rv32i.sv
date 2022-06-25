@@ -146,23 +146,7 @@ module x_top_rv32i(
    ///////////////////////////////////////////////////////////////////
    // State Machine
    //    - Includes instruction type decode
-
-   always_comb begin
-      sm_en = 1'b0;
-      case(sm_q)
-         FETCH:      sm_en = i_accept;  
-         DECODE:     sm_en = 1'b1; 
-         EXECUTE_I:  sm_en = 1'b1;
-         EXECUTE_J:  sm_en = 1'b1;
-         EXECUTE_L:  sm_en = i_accept;
-         EXECUTE_S:  sm_en = i_accept;
-         EXECUTE_U:  sm_en = 1'b1;
-         EXECUTE_R:  sm_en = 1'b1;
-         EXECUTE_B:  sm_en = 1'b1;
-         default:;
-      endcase
-   end
-   
+ 
    always_comb begin
       sm_d = FETCH;
       case(sm_q)
@@ -189,6 +173,8 @@ module x_top_rv32i(
    assign sm_u = (sm_q == EXECUTE_U);
    assign sm_j = (sm_q == EXECUTE_J);
    assign sm_l = (sm_q == EXECUTE_L);
+
+   assign sm_en = ~(sm_f | sm_l | sm_s) | i_accept;
 
    always_ff@(posedge i_clk or negedge i_nrst) begin
       if(!i_nrst)    sm_q <= 'd0;
@@ -290,12 +276,12 @@ module x_top_rv32i(
                   is_q.j.imm_10_1,
                   1'b0};
 
-   assign pc_imm     = (sm_b) ? pc_b : pc_j;
-   assign pc_jump    = pc_q + pc_imm - 'd4;  
-   assign pc_branch  = sm_b & (is_q.b.funct3 == 3'b111) & (alu_c == 'd0); 
-   assign pc_d       = (sm_j | pc_branch) ? pc_jump : pc_next;
-   assign pc_en      = (sm_f & sm_en)|
-                       (sm_b & pc_branch)| sm_j ;
+   assign pc_imm    = (sm_b) ? pc_b : pc_j;
+   assign pc_jump   = pc_q + pc_imm - 'd4;  
+   assign pc_branch = sm_b & (is_q.b.funct3 == 3'b111) & (alu_c == 'd0); 
+   assign pc_d      = (sm_j | pc_branch) ? pc_jump : pc_next;
+   assign pc_en     = (sm_f & sm_en)|
+                      (sm_b & pc_branch)| sm_j ;
 
    always_ff@(posedge i_clk or negedge i_nrst) begin
       if(!i_nrst)    pc_q <= 'd0;
