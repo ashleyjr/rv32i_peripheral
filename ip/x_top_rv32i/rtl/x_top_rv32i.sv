@@ -127,17 +127,16 @@ module x_top_rv32i(
    is_t                    is_d;
 
    logic                   rf_en;
-   logic [4:0]             rf_sel;
    logic [31:0]            rf_data;
    logic [31:0] [31:0]     rf_d;
    logic [31:0] [31:0]     rf_q;
+   logic [31:0]            rf_rs1;
+   logic [31:0]            rf_rs2;
 
    logic                   alu_add;
    logic                   alu_lt;
    logic                   alu_xor;
    logic                   alu_or;
-   logic [4:0]             alu_sel;
-   logic signed [31:0]     alu_a;
    logic signed [31:0]     alu_b;
    logic signed [31:0]     alu_c;
 
@@ -191,14 +190,9 @@ module x_top_rv32i(
    ///////////////////////////////////////////////////////////////////
    // Reg File
 
-   assign rf_sel = is_q.unknown.rd;
-   
    always_comb begin
-      rf_data = 'd0;
+      rf_data = alu_c;
       case(sm_q)
-         EXECUTE_R,
-         EXECUTE_I: rf_data = alu_c;  
-         EXECUTE_J: rf_data = pc_d; 
          EXECUTE_L: rf_data = i_data; 
          EXECUTE_U: rf_data = {is_q.u.imm_31_12,12'd0}; 
          default:;
@@ -207,7 +201,7 @@ module x_top_rv32i(
 
    always_comb begin
       rf_d = rf_q; 
-      rf_d[rf_sel] = rf_data;   
+      rf_d[rd] = rf_data;   
    end
    
    assign rf_en = sm_i | sm_l | sm_r| sm_u;
@@ -216,23 +210,22 @@ module x_top_rv32i(
       if(!i_nrst)    rf_q <= 'd0;
       else if(rf_en) rf_q <= rf_d;
    end
-  
+ 
+   assign rf_rs1 = rf_q[rs1];
+   assign rf_rs2 = rf_q[rs2];
+
    ///////////////////////////////////////////////////////////////////
    // ALU
-
-   assign alu_sel = rs1;
-   assign alu_a   = rf_q[alu_sel];
       
    always_comb begin
-      alu_b = 'd0; 
+      alu_b = rf_rs2; 
       case(sm_q)
          EXECUTE_S: alu_b = {{20{is_q.s.imm_11_5[6]}},
                                  is_q.s.imm_11_5, 
                                  is_q.s.imm_4_0};
          EXECUTE_L,
-         EXECUTE_I: alu_b = {{20{is_q.i.imm_11_0[11]}},is_q.i.imm_11_0};
-         EXECUTE_B,
-         EXECUTE_R: alu_b = rf_q[rs2];
+         EXECUTE_I: alu_b = {{20{is_q.i.imm_11_0[11]}},
+                                 is_q.i.imm_11_0}; 
          default:;
       endcase
    end
@@ -249,12 +242,12 @@ module x_top_rv32i(
    assign alu_or  = (sm_i | sm_r) & (is_q.i.funct3 == 3'b110);
    
    always_comb begin
-      alu_c = alu_a & alu_b;
+      alu_c = rf_rs1 & alu_b;
       case(1'b1)
-         alu_add:    alu_c = alu_a + alu_b;
-         alu_lt:     alu_c = (alu_a < alu_b) ?  32'd1 : 32'd0; 
-         alu_xor:    alu_c = alu_a ^ alu_b;
-         alu_or:     alu_c = alu_a | alu_b;
+         alu_add:    alu_c = rf_rs1 + alu_b;
+         alu_lt:     alu_c = (rf_rs1 < alu_b) ?  32'd1 : 32'd0; 
+         alu_xor:    alu_c = rf_rs1 ^ alu_b;
+         alu_or:     alu_c = rf_rs1 | alu_b;
          default:; 
       endcase
    end
@@ -305,7 +298,5 @@ module x_top_rv32i(
    assign o_rnw   = sm_f | sm_l;
    assign o_valid = sm_f | sm_l | sm_s;
    assign o_addr  = (sm_f) ? pc_q : alu_c; 
-   assign o_data  = (sm_f) ? pc_q: 
-                    (sm_s) ? rf_q[rs2]: 
-                             rf_q[rs1];
+   assign o_data  = rf_rs2;
 endmodule
