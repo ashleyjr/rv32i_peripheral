@@ -1,9 +1,4 @@
 #!/bin/bash
-
-verilator --trace \
-   --cc rtl/x_top_rv32i.sv \
-   --exe tb/x_top_rv32i_tb.cpp
-
-make -C obj_dir -f Vx_top_rv32i.mk Vx_top_rv32i
-
+set -e
+./build
 ./obj_dir/Vx_top_rv32i $1

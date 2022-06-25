@@ -108,6 +108,9 @@ module x_top_rv32i(
    logic signed [31:0]   pc_imm;
    logic [31:0]   pc_jump;
    logic          pc_en;
+   logic          branch;
+   logic signed [31:0]   pc_b;
+   logic [31:0]   pc_j;
    logic [31:0]   pc_q;
    logic [31:0]   pc_d;
 
@@ -147,6 +150,7 @@ module x_top_rv32i(
          EXECUTE_S:  sm_en = i_accept;
          EXECUTE_U:  sm_en = 1'b1;
          EXECUTE_R:  sm_en = 1'b1;
+         EXECUTE_B:  sm_en = 1'b1;
          default:;
       endcase
    end
@@ -162,6 +166,7 @@ module x_top_rv32i(
                      5'b00000: sm_d = EXECUTE_L;                    
                      5'b01101: sm_d = EXECUTE_U;
                      5'b01100: sm_d = EXECUTE_R;
+                     5'b11000: sm_d = EXECUTE_B;
                      default:;
                   endcase
          default:;
@@ -226,6 +231,7 @@ module x_top_rv32i(
                                  is_q.s.imm_4_0};
          EXECUTE_L,
          EXECUTE_I: alu_b = {{20{is_q.i.imm_11_0[11]}},is_q.i.imm_11_0};
+         EXECUTE_B,
          EXECUTE_R: alu_b = rf_q[rs2];
          default:;
       endcase
@@ -235,7 +241,8 @@ module x_top_rv32i(
                     (sm_q == EXECUTE_L) | 
                    ((sm_q == EXECUTE_I) & (is_q.i.funct3 == 3'b00));
 
-   assign alu_lt  = (sm_q == EXECUTE_I) & (
+   assign alu_lt  =  (sm_q == EXECUTE_B)|
+                     (sm_q == EXECUTE_I) & (
                         (is_q.i.funct3 == 3'b010) |
                         (is_q.i.funct3 == 3'b011)
                      );
@@ -261,15 +268,26 @@ module x_top_rv32i(
    // Program Counter
 
    assign pc_next = pc_q + 'd4;
-   assign pc_imm  = {   {11{is_q.j.imm_20}},
+  
+   assign pc_b[31:13] = {19{is_q.b.imm_12_10_5[6]}};
+   assign {pc_b[12],pc_b[10:5]} = is_q.b.imm_12_10_5;
+   assign {pc_b[4:1],pc_b[11]} = is_q.b.imm_4_1_11;
+   assign pc_b[0] = 'd0;
+   
+   
+   assign pc_j    = {   {11{is_q.j.imm_20}},
                         is_q.j.imm_20,
                         is_q.j.imm_19_12,
                         is_q.j.imm_11,
                         is_q.j.imm_10_1,
                         1'b0};
-   assign pc_jump = pc_q + pc_imm - 'd4; 
-   assign pc_d    = (sm_q == EXECUTE_J) ? pc_jump : pc_next;
+
+   assign pc_imm  = (sm_q == EXECUTE_B) ? pc_b : pc_j;
+   assign pc_jump = pc_q + pc_imm - 'd4;  
+   assign branch  = (sm_q == EXECUTE_B) & (is_q.b.funct3 == 3'b111) & (alu_c == 'd0); 
+   assign pc_d    = ((sm_q == EXECUTE_J) | branch) ? pc_jump : pc_next;
    assign pc_en   = ((sm_q == FETCH) & sm_en)|
+                     ((sm_q == EXECUTE_B) & branch)|
                      (sm_q == EXECUTE_J) ;
 
    always_ff@(posedge i_clk or negedge i_nrst) begin
