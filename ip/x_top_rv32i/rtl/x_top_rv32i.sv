@@ -63,7 +63,7 @@ module x_top_rv32i(
       logic [6:0]    u1;   
       logic [4:0]    rs2;
       logic [4:0]    rs1;
-      logic [2:0]    u0;
+      logic [2:0]    funct3;
       logic [4:0]    rd;
       logic [4:0]    opcode;
       logic [1:0]    always_one;
@@ -135,12 +135,14 @@ module x_top_rv32i(
 
    logic                   alu_add;
    logic                   alu_lt;
+   logic                   alu_eq;
    logic                   alu_xor;
    logic                   alu_or;
    logic signed [31:0]     alu_b;
    logic signed [31:0]     alu_c;
 
-   logic [7:0]             opcode;
+   logic [4:0]             opcode;
+   logic [2:0]             funct3;
 
    ///////////////////////////////////////////////////////////////////
    // State Machine
@@ -150,7 +152,7 @@ module x_top_rv32i(
       sm_d = FETCH;
       case(sm_q)
          FETCH:   sm_d = DECODE; 
-         DECODE:  case(is_q.unknown.opcode)
+         DECODE:  case(opcode)
                      5'b00100: sm_d = EXECUTE_I;          
                      5'b11011: sm_d = EXECUTE_J;
                      5'b01000: sm_d = EXECUTE_S;                    
@@ -181,11 +183,13 @@ module x_top_rv32i(
    end
     
    ///////////////////////////////////////////////////////////////////
-   // Selects
+   // Shorthand
 
-   assign rs1  = is_q.unknown.rs1;
-   assign rs2  = is_q.unknown.rs2;
-   assign rd   = is_q.unknown.rd;
+   assign opcode = is_q.unknown.opcode;
+   assign funct3 = is_q.unknown.funct3;
+   assign rs1    = is_q.unknown.rs1;
+   assign rs2    = is_q.unknown.rs2;
+   assign rd     = is_q.unknown.rd;
 
    ///////////////////////////////////////////////////////////////////
    // Reg File
@@ -231,21 +235,26 @@ module x_top_rv32i(
    end
 
    assign alu_add = sm_s | sm_l |
-                   (sm_i & (is_q.i.funct3 == 3'b00));
+                   (sm_i & (funct3 == 3'b00));
 
-   assign alu_lt  =  sm_b | sm_i & (
-                        (is_q.i.funct3 == 3'b010) |
-                        (is_q.i.funct3 == 3'b011)
-                     );
+   assign alu_lt  =  (sm_b &
+                        (funct3 == 3'b111)
+                     )| 
+                     (sm_i & (
+                        (funct3 == 3'b010) |
+                        (funct3 == 3'b011)
+                     ));
 
-   assign alu_xor = (sm_i | sm_r) & (is_q.i.funct3 == 3'b100);
-   assign alu_or  = (sm_i | sm_r) & (is_q.i.funct3 == 3'b110);
-   
+   assign alu_xor = (sm_i | sm_r) & (funct3 == 3'b100);
+   assign alu_or  = (sm_i | sm_r) & (funct3 == 3'b110);
+   assign alu_eq  = sm_b & (funct3 == 3'b000);
+
    always_comb begin
       alu_c = rf_rs1 & alu_b;
       case(1'b1)
          alu_add:    alu_c = rf_rs1 + alu_b;
          alu_lt:     alu_c = (rf_rs1 < alu_b) ?  32'd1 : 32'd0; 
+         alu_eq:     alu_c = (rf_rs1 == alu_b) ?  32'd1 : 32'd0; 
          alu_xor:    alu_c = rf_rs1 ^ alu_b;
          alu_or:     alu_c = rf_rs1 | alu_b;
          default:; 
@@ -271,7 +280,10 @@ module x_top_rv32i(
 
    assign pc_imm    = (sm_b) ? pc_b : pc_j;
    assign pc_jump   = pc_q + pc_imm - 'd4;  
-   assign pc_branch = sm_b & (is_q.b.funct3 == 3'b111) & (alu_c == 'd0); 
+   assign pc_branch = sm_b & (
+                        ((funct3 == 3'b000) & (alu_c == 'd1))|
+                        ((funct3 == 3'b111) & (alu_c == 'd0))
+                     ); 
    assign pc_d      = (sm_j | pc_branch) ? pc_jump : pc_next;
    assign pc_en     = (sm_f & sm_en)|
                       (sm_b & pc_branch)| sm_j ;
