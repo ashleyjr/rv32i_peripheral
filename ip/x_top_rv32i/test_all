@@ -8,3 +8,4 @@ cd ../..
 ./run tb/programs/switch.mem | FileCheck-14 tb/programs/switch.c
 ./run tb/programs/logical.mem | FileCheck-14 tb/programs/logical.c
 ./run tb/programs/shift.mem | FileCheck-14 tb/programs/shift.c
+./run tb/programs/recursive.mem | FileCheck-14 tb/programs/recursive.c

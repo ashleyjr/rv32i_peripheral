@@ -7,14 +7,17 @@ MEMDATA       := $(SOURCES:%.c=%.mem)
 DISDATA       := $(SOURCES:%.c=%.dis)
 
 
-CFLAGS=-mabi=ilp32 -march=rv32i
-LDFLAGS=-T riscv.ld -m elf32lriscv -O binary
-
+CFLAGS=-mabi=ilp32 -march=rv32i -O0
+LDFLAGS=-T riscv.ld -m elf32lriscv 
 PREFIX=riscv32-unknown-elf
 OC=$(PREFIX)-objcopy
 OD=$(PREFIX)-objdump
 CC=$(PREFIX)-gcc
 LD=$(PREFIX)-ld
+
+CFLAGS=-mabi=ilp32 -march=rv32i
+LDFLAGS=-T riscv.ld -m elf32lriscv -O binary
+
 
 all: $(TESTDATA) $(MEMDATA) $(HEXDATA) $(DISDATA)
 

@@ -93,6 +93,7 @@ module x_top_rv32i(
       EXECUTE_B,
       EXECUTE_U,
       EXECUTE_J,
+      EXECUTE_K, // JALR 
       EXECUTE_L
    } sm_t; 
 
@@ -108,15 +109,18 @@ module x_top_rv32i(
    logic                   sm_u;
    logic                   sm_j;
    logic                   sm_l;
+   logic                   sm_k;
    logic                   sm_en;
    sm_t                    sm_q;
    sm_t                    sm_d;
 
+   logic [31:0]            pc_base;
    logic [31:0]            pc_next;
    logic signed [31:0]     pc_imm;
    logic [31:0]            pc_jump;
    logic                   pc_en;
    logic                   pc_branch;
+   logic signed [31:0]     pc_k;
    logic signed [31:0]     pc_b;
    logic [31:0]            pc_j;
    logic [31:0]            pc_q;
@@ -161,6 +165,7 @@ module x_top_rv32i(
                      5'b01101: sm_d = EXECUTE_U;
                      5'b01100: sm_d = EXECUTE_R;
                      5'b11000: sm_d = EXECUTE_B;
+                     5'b11001: sm_d = EXECUTE_K;
                      default:;
                   endcase
          default:;
@@ -175,7 +180,8 @@ module x_top_rv32i(
    assign sm_u = (sm_q == EXECUTE_U);
    assign sm_j = (sm_q == EXECUTE_J);
    assign sm_l = (sm_q == EXECUTE_L);
-
+   assign sm_k = (sm_q == EXECUTE_K);
+   
    assign sm_en = ~(sm_f | sm_l | sm_s) | i_accept;
 
    always_ff@(posedge i_clk or negedge i_nrst) begin
@@ -199,6 +205,7 @@ module x_top_rv32i(
       rf_data = alu_c;
       case(sm_q)
          EXECUTE_L: rf_data = i_data; 
+         EXECUTE_J: rf_data = pc_q + 'd4; 
          EXECUTE_U: rf_data = {is_q.u.imm_31_12,12'd0}; 
          default:;
       endcase
@@ -206,10 +213,11 @@ module x_top_rv32i(
 
    always_comb begin
       rf_d = rf_q; 
-      rf_d[rd] = rf_data;   
+      rf_d[rd] = rf_data;  
+      rf_d[0] = 'd0;
    end
    
-   assign rf_en = sm_i | sm_l | sm_r| sm_u;
+   assign rf_en = sm_i | sm_l | sm_r| sm_u | sm_j;
 
    always_ff@(posedge i_clk or negedge i_nrst) begin
       if(!i_nrst)    rf_q <= 'd0;
@@ -236,7 +244,7 @@ module x_top_rv32i(
    end
 
    assign alu_add = sm_s | sm_l |
-                   (sm_i & (funct3 == 3'b00));
+                   ((sm_i | sm_r) & (funct3 == 3'b00));
 
    assign alu_lt  =  (sm_b &
                         (funct3 == 3'b111)
@@ -248,7 +256,10 @@ module x_top_rv32i(
 
    assign alu_xor = (sm_i | sm_r) & (funct3 == 3'b100);
    assign alu_or  = (sm_i | sm_r) & (funct3 == 3'b110);
-   assign alu_eq  = sm_b & (funct3 == 3'b000);
+   assign alu_eq  = sm_b & (
+                        (funct3 == 3'b000)|
+                        (funct3 == 3'b001)
+                     );
    assign alu_sl  = sm_i & (funct3 == 3'b001);
 
    always_comb begin
@@ -281,15 +292,22 @@ module x_top_rv32i(
                   is_q.j.imm_10_1,
                   1'b0};
 
-   assign pc_imm    = (sm_b) ? pc_b : pc_j;
-   assign pc_jump   = pc_q + pc_imm - 'd4;  
+   assign pc_k = {{20{is_q.i.imm_11_0[11]}},
+                      is_q.i.imm_11_0}; 
+               
+   assign pc_base   = (sm_k) ? rf_rs1 : pc_q;
+   assign pc_imm    = (sm_k) ? pc_k :
+                      (sm_b) ? pc_b : 
+                               pc_j;
+   assign pc_jump   = pc_base + pc_imm - 'd4;  
    assign pc_branch = sm_b & (
                         ((funct3 == 3'b000) & (alu_c == 'd1))|
+                        ((funct3 == 3'b001) & (alu_c == 'd0))|
                         ((funct3 == 3'b111) & (alu_c == 'd0))
                      ); 
-   assign pc_d      = (sm_j | pc_branch) ? pc_jump : pc_next;
+   assign pc_d      = (sm_k | sm_j | pc_branch) ? pc_jump : pc_next;
    assign pc_en     = (sm_f & sm_en)|
-                      (sm_b & pc_branch)| sm_j ;
+                      (sm_b & pc_branch) | sm_j | sm_k;
 
    always_ff@(posedge i_clk or negedge i_nrst) begin
       if(!i_nrst)    pc_q <= 'd0;
