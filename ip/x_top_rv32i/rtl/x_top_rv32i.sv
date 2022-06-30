@@ -246,9 +246,10 @@ module x_top_rv32i(
    assign alu_add = sm_s | sm_l |
                    ((sm_i | sm_r) & (funct3 == 3'b00));
 
-   assign alu_lt  =  (sm_b &
+   assign alu_lt  =  (sm_b & (
+                        (funct3 == 3'b110) |
                         (funct3 == 3'b111)
-                     )| 
+                     ))| 
                      (sm_i & (
                         (funct3 == 3'b010) |
                         (funct3 == 3'b011)
@@ -303,6 +304,7 @@ module x_top_rv32i(
    assign pc_branch = sm_b & (
                         ((funct3 == 3'b000) & (alu_c == 'd1))|
                         ((funct3 == 3'b001) & (alu_c == 'd0))|
+                        ((funct3 == 3'b110) & (alu_c == 'd1))|
                         ((funct3 == 3'b111) & (alu_c == 'd0))
                      ); 
    assign pc_d      = (sm_k | sm_j | pc_branch) ? pc_jump : pc_next;
