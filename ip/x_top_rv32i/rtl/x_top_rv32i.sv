@@ -138,6 +138,7 @@ module x_top_rv32i(
    logic [31:0]            rf_rs2;
 
    logic                   alu_add;
+   logic                   alu_sub;
    logic                   alu_lt;
    logic                   alu_eq;
    logic                   alu_xor;
@@ -244,7 +245,12 @@ module x_top_rv32i(
    end
 
    assign alu_add = sm_s | sm_l |
-                   ((sm_i | sm_r) & (funct3 == 3'b00));
+                   (sm_i & (funct3 == 3'b000)) | 
+                   (sm_r & (funct3 == 3'b000) & (is_q.r.funct7 == 'd0));
+
+   assign alu_sub =  sm_r & 
+                     (funct3 == 3'b00) &
+                      (is_q.r.funct7 == 7'b0100000);
 
    assign alu_lt  =  (sm_b & (
                         (funct3 == 3'b110) |
@@ -263,10 +269,12 @@ module x_top_rv32i(
                      );
    assign alu_sl  = sm_i & (funct3 == 3'b001);
 
+
    always_comb begin
       alu_c = rf_rs1 & alu_b;
       case(1'b1)
          alu_add:    alu_c = rf_rs1 + alu_b;
+         alu_sub:    alu_c = rf_rs1 - alu_b;
          alu_lt:     alu_c = (rf_rs1 < alu_b) ?  32'd1 : 32'd0; 
          alu_eq:     alu_c = (rf_rs1 == alu_b) ?  32'd1 : 32'd0; 
          alu_sl:     alu_c = rf_rs1 << rs2;
