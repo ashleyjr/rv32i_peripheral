@@ -218,7 +218,7 @@ module x_top_rv32i(
       rf_d[0] = 'd0;
    end
    
-   assign rf_en = sm_i | sm_l | sm_r| sm_u | sm_j;
+   assign rf_en = sm_i | (sm_l & sm_en) | sm_r | sm_u | sm_j;
 
    always_ff@(posedge i_clk or negedge i_nrst) begin
       if(!i_nrst)    rf_q <= 'd0;

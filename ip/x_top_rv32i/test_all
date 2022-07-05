@@ -11,3 +11,4 @@ cd ../..
 ./run tb/programs/recursive.mem | FileCheck-14 tb/programs/recursive.c
 ./run tb/programs/mem.mem | FileCheck-14 tb/programs/mem.c
 ./run tb/programs/gcd.mem | FileCheck-14 tb/programs/gcd.c
+./run tb/programs/neg.mem | FileCheck-14 tb/programs/neg.c
