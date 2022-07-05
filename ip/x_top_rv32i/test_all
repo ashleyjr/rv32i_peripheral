@@ -3,12 +3,8 @@
 cd tb/programs
 make
 cd ../..
-./run tb/programs/loop.mem | FileCheck-14 tb/programs/loop.c
-./run tb/programs/acc.mem | FileCheck-14 tb/programs/acc.c
-./run tb/programs/switch.mem | FileCheck-14 tb/programs/switch.c
-./run tb/programs/logical.mem | FileCheck-14 tb/programs/logical.c
-./run tb/programs/shift.mem | FileCheck-14 tb/programs/shift.c
-./run tb/programs/recursive.mem | FileCheck-14 tb/programs/recursive.c
-./run tb/programs/mem.mem | FileCheck-14 tb/programs/mem.c
-./run tb/programs/gcd.mem | FileCheck-14 tb/programs/gcd.c
-./run tb/programs/neg.mem | FileCheck-14 tb/programs/neg.c
+for i in tb/programs/*.mem; do 
+   CMD="./run $i | FileCheck-14 ${i/".mem"/".c"}"
+   echo "$CMD"
+   eval $CMD
+done
