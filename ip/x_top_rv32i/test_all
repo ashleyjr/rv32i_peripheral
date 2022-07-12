@@ -1,10 +1,21 @@
 #!/bin/bash
 
-cd tb/programs
+# LD linked tests
+cd tb/programs/ld_linked
 make
-cd ../..
-for i in tb/programs/*.mem; do 
+cd ../../..
+for i in tb/programs/ld_linked/*.mem; do 
    CMD="./run $i | FileCheck-14 ${i/".mem"/".c"}"
    echo "$CMD"
    eval $CMD
 done
+
+# GCC linked tests
+#cd tb/programs/gcc_linked
+#make
+#cd ../../..
+#for i in tb/programs/gcc_linked/*.mem; do 
+#   CMD="./run $i | FileCheck-14 ${i/".mem"/".c"}"
+#   echo "$CMD"
+#   eval $CMD
+#done
