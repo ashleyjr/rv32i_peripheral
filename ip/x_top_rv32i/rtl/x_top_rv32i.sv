@@ -139,11 +139,14 @@ module x_top_rv32i(
 
    logic                   alu_add;
    logic                   alu_sub;
+   logic                   alu_slt;
    logic                   alu_lt;
    logic                   alu_eq;
    logic                   alu_xor;
    logic                   alu_or;
    logic                   alu_sl;
+   logic signed [31:0]     s_alu_a;
+   logic signed [31:0]     s_alu_b; 
    logic signed [31:0]     alu_b;
    logic signed [31:0]     alu_c;
 
@@ -230,7 +233,11 @@ module x_top_rv32i(
 
    ///////////////////////////////////////////////////////////////////
    // ALU
-      
+   
+   assign s_alu_a = rf_rs1;
+   assign s_alu_b = alu_b;
+
+
    always_comb begin
       alu_b = rf_rs2; 
       case(sm_q)
@@ -251,6 +258,11 @@ module x_top_rv32i(
    assign alu_sub =  sm_r & 
                      (funct3 == 3'b00) &
                       (is_q.r.funct7 == 7'b0100000);
+
+   assign alu_slt  =  (sm_b & 
+                        (funct3 == 3'b101) 
+                     );
+
 
    assign alu_lt  =  (sm_b & (
                         (funct3 == 3'b110) |
@@ -276,6 +288,7 @@ module x_top_rv32i(
          alu_add:    alu_c = rf_rs1 + alu_b;
          alu_sub:    alu_c = rf_rs1 - alu_b;
          alu_lt:     alu_c = (rf_rs1 < alu_b) ?  32'd1 : 32'd0; 
+         alu_slt:    alu_c = (s_alu_a < s_alu_b) ?  32'd1 : 32'd0; 
          alu_eq:     alu_c = (rf_rs1 == alu_b) ?  32'd1 : 32'd0; 
          alu_sl:     alu_c = rf_rs1 << rs2;
          alu_xor:    alu_c = rf_rs1 ^ alu_b;
@@ -312,6 +325,7 @@ module x_top_rv32i(
    assign pc_branch = sm_b & (
                         ((funct3 == 3'b000) & (alu_c == 'd1))|
                         ((funct3 == 3'b001) & (alu_c == 'd0))|
+                        ((funct3 == 3'b101) & (alu_c == 'd0))|
                         ((funct3 == 3'b110) & (alu_c == 'd1))|
                         ((funct3 == 3'b111) & (alu_c == 'd0))
                      ); 

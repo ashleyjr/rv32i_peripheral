@@ -14,6 +14,14 @@ lappend sigs "rd"
 lappend sigs "sm_q"
 lappend sigs "alu_sel"
 lappend sigs "pc_q"
+lappend sigs "rs1"
+lappend sigs "rs2"
+lappend sigs "rd"
+lappend sigs "rf_en"
+lappend sigs "rf_data"
+lappend sigs "rf_rs1"
+lappend sigs "rf_rs2"
+lappend sigs "is_q"
 
 set added [ gtkwave::addSignalsFromList $sigs ]
 gtkwave::/Time/Zoom/Zoom_Full

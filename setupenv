@@ -1,2 +1,2 @@
-RV_ROOT=/opt/riscv32i/bin
+RV_ROOT=/opt/riscv32i_6/bin
 PATH=$PATH:$RV_ROOT
