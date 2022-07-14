@@ -166,6 +166,7 @@ module x_top_rv32i(
                      5'b11011: sm_d = EXECUTE_J;
                      5'b01000: sm_d = EXECUTE_S;                    
                      5'b00000: sm_d = EXECUTE_L;                    
+                     5'b00101,
                      5'b01101: sm_d = EXECUTE_U;
                      5'b01100: sm_d = EXECUTE_R;
                      5'b11000: sm_d = EXECUTE_B;
@@ -209,8 +210,10 @@ module x_top_rv32i(
       rf_data = alu_c;
       case(sm_q)
          EXECUTE_L: rf_data = i_data; 
+         EXECUTE_K,
          EXECUTE_J: rf_data = pc_q + 'd4; 
-         EXECUTE_U: rf_data = {is_q.u.imm_31_12,12'd0}; 
+         EXECUTE_U: if(opcode == 5'b00101)   rf_data = alu_c;
+                    else                     rf_data = {is_q.u.imm_31_12,12'd0}; 
          default:;
       endcase
    end
@@ -221,7 +224,7 @@ module x_top_rv32i(
       rf_d[0] = 'd0;
    end
    
-   assign rf_en = sm_i | (sm_l & sm_en) | sm_r | sm_u | sm_j;
+   assign rf_en = sm_i | (sm_l & sm_en) | sm_r | sm_u | sm_j | sm_k;
 
    always_ff@(posedge i_clk or negedge i_nrst) begin
       if(!i_nrst)    rf_q <= 'd0;
@@ -234,13 +237,15 @@ module x_top_rv32i(
    ///////////////////////////////////////////////////////////////////
    // ALU
    
-   assign s_alu_a = rf_rs1;
+   assign s_alu_a = (sm_u) ? pc_q : rf_rs1;
    assign s_alu_b = alu_b;
 
 
    always_comb begin
       alu_b = rf_rs2; 
       case(sm_q)
+         EXECUTE_U: alu_b = {is_q.u.imm_31_12,12'd0}; 
+
          EXECUTE_S: alu_b = {{20{is_q.s.imm_11_5[6]}},
                                  is_q.s.imm_11_5, 
                                  is_q.s.imm_4_0};
@@ -251,7 +256,7 @@ module x_top_rv32i(
       endcase
    end
 
-   assign alu_add = sm_s | sm_l |
+   assign alu_add = sm_s | sm_l | sm_u |
                    (sm_i & (funct3 == 3'b000)) | 
                    (sm_r & (funct3 == 3'b000) & (is_q.r.funct7 == 'd0));
 
@@ -285,7 +290,7 @@ module x_top_rv32i(
    always_comb begin
       alu_c = rf_rs1 & alu_b;
       case(1'b1)
-         alu_add:    alu_c = rf_rs1 + alu_b;
+         alu_add:    alu_c = s_alu_a + alu_b;
          alu_sub:    alu_c = rf_rs1 - alu_b;
          alu_lt:     alu_c = (rf_rs1 < alu_b) ?  32'd1 : 32'd0; 
          alu_slt:    alu_c = (s_alu_a < s_alu_b) ?  32'd1 : 32'd0; 

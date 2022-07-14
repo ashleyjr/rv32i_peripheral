@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <iostream>
 #include <fstream>
+#include <limits>
 #include <sstream>
 #include <string>
 #include <list>
@@ -14,8 +15,10 @@
 
 vluint64_t sim_time = 0;
 
-int main(int argc, char** argv, char** env) {
+int main(int argc, char** argv, char** env) { 
    Vx_top_rv32i *dut = new Vx_top_rv32i;
+  
+   std::cout << "Start\n\r";
    
    Verilated::traceEverOn(true);
    VerilatedVcdC *m_trace = new VerilatedVcdC;
@@ -28,19 +31,19 @@ int main(int argc, char** argv, char** env) {
       exit(EXIT_FAILURE);
    }
    
-   // Load the memory file 
+   // Some associative memory
    unsigned int mem[MEM_SIZE]; 
    unsigned int addr[MEM_SIZE]; 
    unsigned int usage = 0;
+   unsigned int rom_size = 0;
+
+   // How large is the ROM?
    std::ifstream infile(argv[1]);
    std::string line; 
-   while(std::getline(infile, line)){
+   while(std::getline(infile, line)){ 
       std::istringstream iss(line);  
       std::stringstream ss;
-      ss << std::hex << line;
-      ss >> mem[usage];
-      addr[usage] = usage;
-      usage++;
+      rom_size++;
    }
 
    dut->i_clk = 0;
@@ -81,12 +84,25 @@ int main(int argc, char** argv, char** env) {
                std::cout << std::setw(8) << std::setfill('0');
                std::cout << std::hex << dut->o_addr;
                std::cout << " > 0x";
-               for(int i=0;i<usage;i++){
-                  if(addr[i] == (dut->o_addr >> 2)){ 
-                     dut->i_data = mem[i];
-                     break;
-                  }
-               } 
+               
+               if((dut->o_addr >> 2) < rom_size){
+                  // The format of the input file is known
+                  // 8 hex and 1 \n so skip the byte needed
+                  infile.clear();
+                  infile.seekg((dut->o_addr >> 2)*9);
+                  std::getline(infile, line); 
+                  std::istringstream iss(line);  
+                  std::stringstream ss;
+                  ss << std::hex << line;
+                  ss >> dut->i_data;
+               }else{
+                  for(int i=0;i<usage;i++){
+                     if(addr[i] == (dut->o_addr >> 2)){ 
+                        dut->i_data = mem[i];
+                        break;
+                     }
+                  } 
+               }
                std::cout << std::setw(8) << std::setfill('0'); 
                std::cout << std::hex << dut->i_data; 
             }else{
