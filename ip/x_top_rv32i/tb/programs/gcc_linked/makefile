@@ -5,7 +5,7 @@ TESTDATA      := $(SOURCES:%.c=%.elf)
 HEXDATA       := $(SOURCES:%.c=%.hex)
 MEMDATA       := $(SOURCES:%.c=%.mem)
 DISDATA       := $(SOURCES:%.c=%.dis)
-
+SECDATA       := $(SOURCES:%.c=%.sec)
 
 CFLAGS=-mabi=ilp32 -march=rv32i -O0
 LDFLAGS=-T riscv.ld -m elf32lriscv 
@@ -18,7 +18,8 @@ LD=$(PREFIX)-ld
 CFLAGS=-mabi=ilp32 -march=rv32i -nostartfiles -nostdlib -lgcc
 LDFLAGS=-T riscv.ld 
 
-all: $(TESTDATA) $(MEMDATA) $(HEXDATA) $(DISDATA)
+all: $(TESTDATA) $(MEMDATA) $(HEXDATA) $(DISDATA) $(SECDATA)
+
 
 %.elf: %.c
 		@echo "Building $< -> $@"
@@ -27,16 +28,20 @@ all: $(TESTDATA) $(MEMDATA) $(HEXDATA) $(DISDATA)
 
 %.hex: %.elf
 		@echo "Building $< -> $@"
-		@$(OC) -O ihex $(@:%.hex=%.elf) $@ --only-section .text\*
+		@$(OC) -O ihex $(@:%.hex=%.elf) $@ 
 
 %.mem: %.elf  ## Readmemh 32bit memory file
 		@echo "Building $< -> $@"
-		@$(OC) -O binary $(@:%.mem=%.elf) $(@:%.mem=%.bin) --only-section .text\*
-		@hexdump -ve '1/4 "%08x\n"' $(@:%.mem=%.bin) > $@
+		@$(OC) -O verilog $(@:%.mem=%.elf) $(@:%.mem=%.bin) 
+		@python verilog2hex.py $(@:%.mem=%.bin) > $@
 
 %.dis: %.elf
 		@echo "Dissasemble $< -> $@"
-		@$(OD) -d $< > $@
+		@$(OD) -D $< > $@
+
+%.sec: %.elf
+		@echo "Sections $< -> $@"
+		@$(OD) -s $< > $@
 
 clean:
 		@echo "Cleaning build files"

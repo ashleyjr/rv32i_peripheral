@@ -48,7 +48,6 @@ int main(int argc, char** argv, char** env) {
 
    dut->i_clk = 0;
    dut->i_nrst = 0;
-   
    std::cout << "sim_time   addr         data\n\r";
    while (sim_time < MAX_SIM_TIME) {
      

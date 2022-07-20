@@ -146,6 +146,7 @@ module x_top_rv32i(
    logic                   alu_or;
    logic                   alu_sl;
    logic                   alu_sr;
+   logic                   alu_sar;
    logic signed [31:0]     s_alu_a;
    logic signed [31:0]     s_alu_b; 
    logic signed [31:0]     alu_b;
@@ -212,7 +213,7 @@ module x_top_rv32i(
       case(sm_q)
          EXECUTE_L: rf_data = i_data; 
          EXECUTE_K,
-         EXECUTE_J: rf_data = pc_q + 'd4; 
+         EXECUTE_J: rf_data = pc_q; 
          EXECUTE_U: if(opcode == 5'b00101)   rf_data = alu_c;
                     else                     rf_data = {is_q.u.imm_31_12,12'd0}; 
          default:;
@@ -232,8 +233,8 @@ module x_top_rv32i(
       else if(rf_en) rf_q <= rf_d;
    end
  
-   assign rf_rs1 = rf_q[rs1];
-   assign rf_rs2 = rf_q[rs2];
+   assign rf_rs1 = (rs1 == 'd0) ? 'd0 :  rf_q[rs1];
+   assign rf_rs2 = (rs1 == 'd0) ? 'd0 :  rf_q[rs2];
 
    ///////////////////////////////////////////////////////////////////
    // ALU
@@ -286,22 +287,25 @@ module x_top_rv32i(
                         (funct3 == 3'b001)
                      );
    assign alu_sl  = sm_i & (funct3 == 3'b001);
-   
-   // TODO: Arith shift righ
+    
    assign alu_sr  = sm_i & 
                     (funct3 == 3'b101) &
                     (is_q.r.funct7 == 'd0);
-
+   
+   assign alu_sar = sm_i & 
+                    (funct3 == 3'b101) &
+                    (is_q.r.funct7 == 'b0100000);
    always_comb begin
       alu_c = rf_rs1 & alu_b;
       case(1'b1)
-         alu_add:    alu_c = s_alu_a + alu_b;
+         alu_add:    alu_c = s_alu_a + s_alu_b;
          alu_sub:    alu_c = rf_rs1 - alu_b;
          alu_lt:     alu_c = (rf_rs1 < alu_b) ?  32'd1 : 32'd0; 
          alu_slt:    alu_c = (s_alu_a < s_alu_b) ?  32'd1 : 32'd0; 
          alu_eq:     alu_c = (rf_rs1 == alu_b) ?  32'd1 : 32'd0; 
          alu_sl:     alu_c = rf_rs1 << rs2;
          alu_sr:     alu_c = rf_rs1 >> rs2;
+         alu_sar:    alu_c = s_alu_a >>> rs2; 
          alu_xor:    alu_c = rf_rs1 ^ alu_b;
          alu_or:     alu_c = rf_rs1 | alu_b;
          default:; 
@@ -340,7 +344,8 @@ module x_top_rv32i(
                         ((funct3 == 3'b110) & (alu_c == 'd1))|
                         ((funct3 == 3'b111) & (alu_c == 'd0))
                      ); 
-   assign pc_d      = (sm_k | sm_j | pc_branch) ? pc_jump : pc_next;
+   assign pc_d      = (sm_k) ? (pc_base + pc_imm):
+                      (sm_k | sm_j | pc_branch) ? pc_jump : pc_next;
    assign pc_en     = (sm_f & sm_en)|
                       (sm_b & pc_branch) | sm_j | sm_k;
 
