@@ -234,7 +234,7 @@ module x_top_rv32i(
    end
  
    assign rf_rs1 = (rs1 == 'd0) ? 'd0 :  rf_q[rs1];
-   assign rf_rs2 = (rs1 == 'd0) ? 'd0 :  rf_q[rs2];
+   assign rf_rs2 = (rs2 == 'd0) ? 'd0 :  rf_q[rs2];
 
    ///////////////////////////////////////////////////////////////////
    // ALU
@@ -267,7 +267,8 @@ module x_top_rv32i(
                       (is_q.r.funct7 == 7'b0100000);
 
    assign alu_slt  =  (sm_b & 
-                        (funct3 == 3'b101) 
+                        ((funct3 == 3'b101)|
+                         (funct3 == 3'b100))
                      );
 
 
@@ -340,6 +341,7 @@ module x_top_rv32i(
    assign pc_branch = sm_b & (
                         ((funct3 == 3'b000) & (alu_c == 'd1))|
                         ((funct3 == 3'b001) & (alu_c == 'd0))|
+                        ((funct3 == 3'b100) & (alu_c == 'd1))|
                         ((funct3 == 3'b101) & (alu_c == 'd0))|
                         ((funct3 == 3'b110) & (alu_c == 'd1))|
                         ((funct3 == 3'b111) & (alu_c == 'd0))
