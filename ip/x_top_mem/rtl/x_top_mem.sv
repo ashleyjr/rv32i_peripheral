@@ -67,8 +67,24 @@ module x_top_mem#(
    ///////////////////////////////////////////////////////////////////
    // State Machine
 
-   assign sm_tx = sm_q inside {R_CMD,R0,R1,R2,R3,RD0_A,RD1_A,RD2_A,RD3_A,
-                               W_CMD,W0,W1,W2,W3,WD0,WD1,WD2,WD3}; 
+   assign sm_tx = (sm_q == R_CMD)|
+                   (sm_q ==  R0)|
+                   (sm_q ==  R1)|
+                   (sm_q ==  R2)|
+                   (sm_q ==  R3)|
+                   (sm_q ==  RD0_A)|
+                   (sm_q ==  RD1_A)|
+                   (sm_q ==  RD2_A)|
+                   (sm_q ==  RD3_A)|
+                   (sm_q ==  W_CMD)|
+                   (sm_q ==  W0)|
+                   (sm_q ==  W1)|
+                   (sm_q ==  W2)|
+                   (sm_q ==  W3)|
+                   (sm_q ==  WD0)|
+                   (sm_q ==  WD1)|
+                   (sm_q ==  WD2)|
+                   (sm_q ==  WD3);
      
    assign sm_en = (sm_q == IDLE  ) ? i_valid: 
                   (sm_tx         ) ? tx_accept: 
@@ -130,9 +146,11 @@ module x_top_mem#(
    ///////////////////////////////////////////////////////////////////
    // Mem interface
 
-   assign o_accept = (sm_q inside {WD3_A,RD3_A}) & sm_en;
+   assign o_accept = ((sm_q == WD3_A)|(sm_q == RD3_A)) & sm_en;
 
-   assign data_en = (sm_q inside {RD0, RD1, RD2}) & rx_valid;
+   assign data_en = (   (sm_q == RD0)|
+                        (sm_q == RD1)|
+                        (sm_q == RD2)) & rx_valid;
 
    assign data_d = {rx_data,data_q[23:8]};
    

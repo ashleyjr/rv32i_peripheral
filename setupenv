@@ -1,2 +1,4 @@
 RV_ROOT=/opt/riscv32i_6/bin
 PATH=$PATH:$RV_ROOT
+
+export PATH="~/oss-cad-suite/oss-cad-suite/bin:$PATH"
