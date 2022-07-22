@@ -165,7 +165,7 @@ module x_top_rv32i(
    assign sm_r = (sm_q == EXECUTE) &  (opcode == 5'b01100);          
    assign sm_i = (sm_q == EXECUTE) &  (opcode == 5'b00100);
    assign sm_s = (sm_q == EXECUTE) &  (opcode == 5'b01000);                    
-   assign sm_b = (sm_q == EXECUTE) &  (opcode == 5'b11000);                    
+   assign sm_b = (sm_q == EXECUTE) &  (opcode == 5'b11000);                     
    assign sm_u = (sm_q == EXECUTE) & ((opcode == 5'b00101) | (opcode == 5'b01101));
    assign sm_j = (sm_q == EXECUTE) &  (opcode == 5'b11011);
    assign sm_l = (sm_q == EXECUTE) &  (opcode == 5'b00000);
@@ -248,9 +248,7 @@ module x_top_rv32i(
    assign alu_add =  sm_s | sm_l | sm_u |
                     (sm_i & (funct3 == 3'b000)) | 
                     (sm_r & (funct3 == 3'b000) & (is_q.r.funct7 == 'd0));
-   assign alu_sub =  sm_r & 
-                    (funct3 == 3'b00) &
-                    (is_q.r.funct7 == 7'b0100000);
+   assign alu_sub =  sm_r & (funct3 == 3'b000) & (is_q.r.funct7 == 7'b0100000);
    assign alu_slt = (sm_b & (funct3[2:1] == 2'b10));
    assign alu_lt  = (sm_b & (funct3[2:1] == 2'b11))| 
                     (sm_i & (funct3[2:1] == 2'b01));
@@ -264,55 +262,45 @@ module x_top_rv32i(
    always_comb begin
       alu_c = rf_rs1 & alu_b;
       case(1'b1)
-         alu_add:    alu_c = s_alu_a + s_alu_b;
-         alu_sub:    alu_c = rf_rs1 - alu_b;
-         alu_lt:     alu_c = (rf_rs1 < alu_b) ?  32'd1 : 32'd0; 
-         alu_slt:    alu_c = (s_alu_a < s_alu_b) ?  32'd1 : 32'd0; 
-         alu_eq:     alu_c = (rf_rs1 == alu_b) ?  32'd1 : 32'd0; 
-         alu_sl:     alu_c = rf_rs1 << rs2;
-         alu_sr:     alu_c = rf_rs1 >> rs2;
-         alu_sar:    alu_c = s_alu_a >>> rs2; 
-         alu_xor:    alu_c = rf_rs1 ^ alu_b;
-         alu_or:     alu_c = rf_rs1 | alu_b;
+         alu_add: alu_c    = s_alu_a + s_alu_b;
+         alu_sub: alu_c    = rf_rs1 - alu_b;
+         alu_lt:  alu_c[0] = (rf_rs1 < alu_b); 
+         alu_slt: alu_c[0] = (s_alu_a < s_alu_b); 
+         alu_eq:  alu_c[0] = (rf_rs1 == alu_b); 
+         alu_sl:  alu_c    = rf_rs1 << rs2;
+         alu_sr:  alu_c    = rf_rs1 >> rs2;
+         alu_sar: alu_c    = s_alu_a >>> rs2; 
+         alu_xor: alu_c    = rf_rs1 ^ alu_b;
+         alu_or:  alu_c    = rf_rs1 | alu_b;
          default:; 
       endcase
    end
 
    ///////////////////////////////////////////////////////////////////
    // Program Counter
-
-   assign pc_next = pc_q + 'd4;
-  
+ 
    assign pc_b[31:13]            = {19{is_q.b.imm_12_10_5[6]}};
    assign {pc_b[12],pc_b[10:5]}  = is_q.b.imm_12_10_5;
    assign {pc_b[4:1],pc_b[11]}   = is_q.b.imm_4_1_11;
    assign pc_b[0]                = 'd0;
-    
-   assign pc_j = {{11{is_q.j.imm_20}},
-                  is_q.j.imm_20,
-                  is_q.j.imm_19_12,
-                  is_q.j.imm_11,
-                  is_q.j.imm_10_1,
-                  1'b0};
-
-   assign pc_k = {{20{is_q.i.imm_11_0[11]}},
-                      is_q.i.imm_11_0}; 
-               
+   assign pc_j      = {{11{is_q.j.imm_20}},
+                       is_q.j.imm_20,
+                       is_q.j.imm_19_12,
+                       is_q.j.imm_11,
+                       is_q.j.imm_10_1,
+                       1'b0};
+   assign pc_k      = {{20{is_q.i.imm_11_0[11]}},
+                           is_q.i.imm_11_0};      
    assign pc_base   = (sm_k) ? rf_rs1 : pc_q;
    assign pc_imm    = (sm_k) ? pc_k :
                       (sm_b) ? pc_b : 
                                pc_j;
    assign pc_jump   = pc_base + pc_imm - 'd4;  
-   assign pc_branch = sm_b & (
-                        ((funct3 == 3'b000) & (alu_c[0] == 'd1))|
-                        ((funct3 == 3'b001) & (alu_c[0] == 'd0))|
-                        ((funct3 == 3'b100) & (alu_c[0] == 'd1))|
-                        ((funct3 == 3'b101) & (alu_c[0] == 'd0))|
-                        ((funct3 == 3'b110) & (alu_c[0] == 'd1))|
-                        ((funct3 == 3'b111) & (alu_c[0] == 'd0))
-                     ); 
-   assign pc_d      = (sm_k) ? (pc_base + pc_imm):
-                      (sm_k | sm_j | pc_branch) ? pc_jump : pc_next;
+   assign pc_next   = pc_q + 'd4;  
+   assign pc_branch = sm_b & (alu_c[0] ^ funct3[0]); 
+   assign pc_d      = (sm_k            ) ? (pc_base + pc_imm):
+                      (sm_j | pc_branch) ?  pc_jump : 
+                                            pc_next;
    assign pc_en     = (sm_f & sm_en)|
                       (sm_b & pc_branch) | sm_j | sm_k;
 
