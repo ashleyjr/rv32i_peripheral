@@ -87,14 +87,7 @@ module x_top_rv32i(
    typedef enum logic [3:0] {
       FETCH, 
       DECODE,
-      EXECUTE_R,
-      EXECUTE_I,
-      EXECUTE_S,
-      EXECUTE_B,
-      EXECUTE_U,
-      EXECUTE_J,
-      EXECUTE_K, // JALR 
-      EXECUTE_L
+      EXECUTE
    } sm_t; 
 
    logic [4:0]             rs1;
@@ -163,31 +156,20 @@ module x_top_rv32i(
       sm_d = FETCH;
       case(sm_q)
          FETCH:   sm_d = DECODE; 
-         DECODE:  case(opcode)
-                     5'b00100: sm_d = EXECUTE_I;          
-                     5'b11011: sm_d = EXECUTE_J;
-                     5'b01000: sm_d = EXECUTE_S;                    
-                     5'b00000: sm_d = EXECUTE_L;                    
-                     5'b00101,
-                     5'b01101: sm_d = EXECUTE_U;
-                     5'b01100: sm_d = EXECUTE_R;
-                     5'b11000: sm_d = EXECUTE_B;
-                     5'b11001: sm_d = EXECUTE_K;
-                     default:;
-                  endcase
-         default:;
+         DECODE:  sm_d = EXECUTE; 
+         default: sm_d = FETCH;
       endcase
    end
 
    assign sm_f = (sm_q == FETCH);
-   assign sm_r = (sm_q == EXECUTE_R);          
-   assign sm_i = (sm_q == EXECUTE_I);
-   assign sm_s = (sm_q == EXECUTE_S);                    
-   assign sm_b = (sm_q == EXECUTE_B);                    
-   assign sm_u = (sm_q == EXECUTE_U);
-   assign sm_j = (sm_q == EXECUTE_J);
-   assign sm_l = (sm_q == EXECUTE_L);
-   assign sm_k = (sm_q == EXECUTE_K);
+   assign sm_r = (sm_q == EXECUTE) &  (opcode == 5'b01100);          
+   assign sm_i = (sm_q == EXECUTE) &  (opcode == 5'b00100);
+   assign sm_s = (sm_q == EXECUTE) &  (opcode == 5'b01000);                    
+   assign sm_b = (sm_q == EXECUTE) &  (opcode == 5'b11000);                    
+   assign sm_u = (sm_q == EXECUTE) & ((opcode == 5'b00101) | (opcode == 5'b01101));
+   assign sm_j = (sm_q == EXECUTE) &  (opcode == 5'b11011);
+   assign sm_l = (sm_q == EXECUTE) &  (opcode == 5'b00000);
+   assign sm_k = (sm_q == EXECUTE) &  (opcode == 5'b11001);
    
    assign sm_en = ~(sm_f | sm_l | sm_s) | i_accept;
 
@@ -210,12 +192,12 @@ module x_top_rv32i(
 
    always_comb begin
       rf_data = alu_c;
-      case(sm_q)
-         EXECUTE_L: rf_data = i_data; 
-         EXECUTE_K,
-         EXECUTE_J: rf_data = pc_q; 
-         EXECUTE_U: if(opcode == 5'b00101)   rf_data = alu_c;
-                    else                     rf_data = {is_q.u.imm_31_12,12'd0}; 
+      case(1'b1)
+         sm_l: rf_data = i_data; 
+         sm_k,
+         sm_j: rf_data = pc_q; 
+         sm_u: if(opcode == 5'b00101)   rf_data = alu_c;
+               else                     rf_data = {is_q.u.imm_31_12,12'd0}; 
          default:;
       endcase
    end
@@ -251,14 +233,14 @@ module x_top_rv32i(
 
    always_comb begin
       alu_b = rf_rs2; 
-      case(sm_q)
-         EXECUTE_U: alu_b = {is_q.u.imm_31_12,12'd0}; 
+      case(1'b1)
+         sm_u: alu_b = {is_q.u.imm_31_12,12'd0}; 
 
-         EXECUTE_S: alu_b = {{20{is_q.s.imm_11_5[6]}},
+         sm_s: alu_b = {{20{is_q.s.imm_11_5[6]}},
                                  is_q.s.imm_11_5, 
                                  is_q.s.imm_4_0};
-         EXECUTE_L,
-         EXECUTE_I: alu_b = {{20{is_q.i.imm_11_0[11]}},
+         sm_l,
+         sm_i: alu_b = {{20{is_q.i.imm_11_0[11]}},
                                  is_q.i.imm_11_0}; 
          default:;
       endcase
