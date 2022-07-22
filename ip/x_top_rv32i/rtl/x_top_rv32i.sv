@@ -230,7 +230,6 @@ module x_top_rv32i(
    assign s_alu_a = (sm_u) ? pc_q : rf_rs1;
    assign s_alu_b = alu_b;
 
-
    always_comb begin
       alu_b = rf_rs2; 
       case(1'b1)
@@ -246,44 +245,22 @@ module x_top_rv32i(
       endcase
    end
 
-   assign alu_add = sm_s | sm_l | sm_u |
-                   (sm_i & (funct3 == 3'b000)) | 
-                   (sm_r & (funct3 == 3'b000) & (is_q.r.funct7 == 'd0));
-
+   assign alu_add =  sm_s | sm_l | sm_u |
+                    (sm_i & (funct3 == 3'b000)) | 
+                    (sm_r & (funct3 == 3'b000) & (is_q.r.funct7 == 'd0));
    assign alu_sub =  sm_r & 
-                     (funct3 == 3'b00) &
-                      (is_q.r.funct7 == 7'b0100000);
-
-   assign alu_slt  =  (sm_b & 
-                        ((funct3 == 3'b101)|
-                         (funct3 == 3'b100))
-                     );
-
-
-   assign alu_lt  =  (sm_b & (
-                        (funct3 == 3'b110) |
-                        (funct3 == 3'b111)
-                     ))| 
-                     (sm_i & (
-                        (funct3 == 3'b010) |
-                        (funct3 == 3'b011)
-                     ));
-
+                    (funct3 == 3'b00) &
+                    (is_q.r.funct7 == 7'b0100000);
+   assign alu_slt = (sm_b & (funct3[2:1] == 2'b10));
+   assign alu_lt  = (sm_b & (funct3[2:1] == 2'b11))| 
+                    (sm_i & (funct3[2:1] == 2'b01));
    assign alu_xor = (sm_i | sm_r) & (funct3 == 3'b100);
    assign alu_or  = (sm_i | sm_r) & (funct3 == 3'b110);
-   assign alu_eq  = sm_b & (
-                        (funct3 == 3'b000)|
-                        (funct3 == 3'b001)
-                     );
+   assign alu_eq  = sm_b & (funct3[2:1] == 2'b00);
    assign alu_sl  = sm_i & (funct3 == 3'b001);
-    
-   assign alu_sr  = sm_i & 
-                    (funct3 == 3'b101) &
-                    (is_q.r.funct7 == 'd0);
+   assign alu_sr  = sm_i & (funct3 == 3'b101) & (is_q.r.funct7 == 'd0);
+   assign alu_sar = sm_i & (funct3 == 3'b101) & (is_q.r.funct7 == 'b0100000);
    
-   assign alu_sar = sm_i & 
-                    (funct3 == 3'b101) &
-                    (is_q.r.funct7 == 'b0100000);
    always_comb begin
       alu_c = rf_rs1 & alu_b;
       case(1'b1)
@@ -327,12 +304,12 @@ module x_top_rv32i(
                                pc_j;
    assign pc_jump   = pc_base + pc_imm - 'd4;  
    assign pc_branch = sm_b & (
-                        ((funct3 == 3'b000) & (alu_c == 'd1))|
-                        ((funct3 == 3'b001) & (alu_c == 'd0))|
-                        ((funct3 == 3'b100) & (alu_c == 'd1))|
-                        ((funct3 == 3'b101) & (alu_c == 'd0))|
-                        ((funct3 == 3'b110) & (alu_c == 'd1))|
-                        ((funct3 == 3'b111) & (alu_c == 'd0))
+                        ((funct3 == 3'b000) & (alu_c[0] == 'd1))|
+                        ((funct3 == 3'b001) & (alu_c[0] == 'd0))|
+                        ((funct3 == 3'b100) & (alu_c[0] == 'd1))|
+                        ((funct3 == 3'b101) & (alu_c[0] == 'd0))|
+                        ((funct3 == 3'b110) & (alu_c[0] == 'd1))|
+                        ((funct3 == 3'b111) & (alu_c[0] == 'd0))
                      ); 
    assign pc_d      = (sm_k) ? (pc_base + pc_imm):
                       (sm_k | sm_j | pc_branch) ? pc_jump : pc_next;
