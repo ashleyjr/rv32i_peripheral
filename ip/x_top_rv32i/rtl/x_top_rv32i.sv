@@ -100,6 +100,8 @@ module x_top_rv32i(
    logic                   sm_s;
    logic                   sm_b;
    logic                   sm_u;
+   logic                   sm_lui; 
+   logic                   sm_auipc;
    logic                   sm_j;
    logic                   sm_l;
    logic                   sm_k;
@@ -125,8 +127,8 @@ module x_top_rv32i(
 
    logic                   rf_en;
    logic [31:0]            rf_data;
-   logic [31:0]      rf_d[31:0];
-   logic [31:0]      rf_q[31:0];
+   logic [31:0]            rf_d  [31:0];
+   logic [31:0]            rf_q  [31:0];
    logic [31:0]            rf_rs1;
    logic [31:0]            rf_rs2;
 
@@ -161,15 +163,17 @@ module x_top_rv32i(
       endcase
    end
 
-   assign sm_f = (sm_q == FETCH);
-   assign sm_r = (sm_q == EXECUTE) &  (opcode == 5'b01100);          
-   assign sm_i = (sm_q == EXECUTE) &  (opcode == 5'b00100);
-   assign sm_s = (sm_q == EXECUTE) &  (opcode == 5'b01000);                    
-   assign sm_b = (sm_q == EXECUTE) &  (opcode == 5'b11000);                     
-   assign sm_u = (sm_q == EXECUTE) & ((opcode == 5'b00101) | (opcode == 5'b01101));
-   assign sm_j = (sm_q == EXECUTE) &  (opcode == 5'b11011);
-   assign sm_l = (sm_q == EXECUTE) &  (opcode == 5'b00000);
-   assign sm_k = (sm_q == EXECUTE) &  (opcode == 5'b11001);
+   assign sm_f     = (sm_q == FETCH);
+   assign sm_r     = (sm_q == EXECUTE) &  (opcode == 5'b01100);          
+   assign sm_i     = (sm_q == EXECUTE) &  (opcode == 5'b00100);
+   assign sm_s     = (sm_q == EXECUTE) &  (opcode == 5'b01000);                    
+   assign sm_b     = (sm_q == EXECUTE) &  (opcode == 5'b11000);                     
+   assign sm_lui   = (sm_q == EXECUTE) &  (opcode == 5'b01101);
+   assign sm_auipc = (sm_q == EXECUTE) &  (opcode == 5'b00101);
+   assign sm_u     = sm_lui | sm_auipc;
+   assign sm_j     = (sm_q == EXECUTE) &  (opcode == 5'b11011);
+   assign sm_l     = (sm_q == EXECUTE) &  (opcode == 5'b00000);
+   assign sm_k     = (sm_q == EXECUTE) &  (opcode == 5'b11001);
    
    assign sm_en = ~(sm_f | sm_l | sm_s) | i_accept;
 
@@ -193,11 +197,10 @@ module x_top_rv32i(
    always_comb begin
       rf_data = alu_c;
       case(1'b1)
-         sm_l: rf_data = i_data; 
+         sm_l:      rf_data = i_data; 
          sm_k,
-         sm_j: rf_data = pc_q; 
-         sm_u: if(opcode == 5'b00101)   rf_data = alu_c;
-               else                     rf_data = {is_q.u.imm_31_12,12'd0}; 
+         sm_j:      rf_data = pc_q; 
+         sm_lui:    rf_data = {is_q.u.imm_31_12,12'd0}; 
          default:;
       endcase
    end
@@ -234,7 +237,6 @@ module x_top_rv32i(
       alu_b = rf_rs2; 
       case(1'b1)
          sm_u: alu_b = {is_q.u.imm_31_12,12'd0}; 
-
          sm_s: alu_b = {{20{is_q.s.imm_11_5[6]}},
                                  is_q.s.imm_11_5, 
                                  is_q.s.imm_4_0};
