@@ -253,7 +253,7 @@ module x_top_rv32i(
    assign alu_sub =  sm_r & (funct3 == 3'b000) & (is_q.r.funct7 == 7'b0100000);
    assign alu_slt = (sm_b & (funct3[2:1] == 2'b10));
    assign alu_lt  = (sm_b & (funct3[2:1] == 2'b11))| 
-                    (sm_i & (funct3[2:1] == 2'b01));
+                    ((sm_i | sm_r) & (funct3[2:1] == 2'b01));
    assign alu_xor = (sm_i | sm_r) & (funct3 == 3'b100);
    assign alu_or  = (sm_i | sm_r) & (funct3 == 3'b110);
    assign alu_eq  = sm_b & (funct3[2:1] == 2'b00);
@@ -264,16 +264,16 @@ module x_top_rv32i(
    always_comb begin
       alu_c = rf_rs1 & alu_b;
       case(1'b1)
-         alu_add: alu_c    = s_alu_a + s_alu_b;
-         alu_sub: alu_c    = rf_rs1 - alu_b;
-         alu_lt:  alu_c[0] = (rf_rs1 < alu_b); 
-         alu_slt: alu_c[0] = (s_alu_a < s_alu_b); 
-         alu_eq:  alu_c[0] = (rf_rs1 == alu_b); 
-         alu_sl:  alu_c    = rf_rs1 << rs2;
-         alu_sr:  alu_c    = rf_rs1 >> rs2;
-         alu_sar: alu_c    = s_alu_a >>> rs2; 
-         alu_xor: alu_c    = rf_rs1 ^ alu_b;
-         alu_or:  alu_c    = rf_rs1 | alu_b;
+         alu_add: alu_c = s_alu_a + s_alu_b;
+         alu_sub: alu_c = rf_rs1 - alu_b;
+         alu_lt:  alu_c = (rf_rs1 < alu_b) ? 'd1 : 'd0;  
+         alu_slt: alu_c = (s_alu_a < s_alu_b) ? 'd1 : 'd0; 
+         alu_eq:  alu_c = (rf_rs1 == alu_b) ? 'd1 : 'd0; 
+         alu_sl:  alu_c = rf_rs1 << rs2;
+         alu_sr:  alu_c = rf_rs1 >> rs2;
+         alu_sar: alu_c = s_alu_a >>> rs2; 
+         alu_xor: alu_c = rf_rs1 ^ alu_b;
+         alu_or:  alu_c = rf_rs1 | alu_b;
          default:; 
       endcase
    end
