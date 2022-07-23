@@ -327,6 +327,17 @@ module x_top_rv32i(
 
    assign o_rnw   = sm_f | sm_l;
    assign o_valid = sm_f | sm_l | sm_s;
-   assign o_addr  = (sm_f) ? pc_q : alu_c; 
-   assign o_data  = rf_rs2;
+   assign o_addr  = (sm_f) ? pc_q : alu_c;  
+
+   always_comb begin
+      o_data = rf_rs2;
+      if(sm_s)
+         case(funct3[1:0])
+            2'b00: o_data &= 32'h000000FF;   // SB
+            2'b01: o_data &= 32'h0000FFFF;   // SH
+            default:;
+         endcase
+   end
+
+
 endmodule
