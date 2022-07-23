@@ -125,6 +125,8 @@ module x_top_rv32i(
    is_t                    is_q;
    is_t                    is_d;
 
+   logic [31:0]            ld_data;
+
    logic                   rf_en;
    logic [31:0]            rf_data;
    logic [31:0]            rf_d  [31:0];
@@ -194,10 +196,20 @@ module x_top_rv32i(
    ///////////////////////////////////////////////////////////////////
    // Reg File
 
+   // Signed extension 
+   always_comb begin
+      ld_data = i_data;
+      case(funct3)
+         3'b000:  ld_data[31:8]  = {24{i_data[7]}};
+         3'b001:  ld_data[31:16] = {16{i_data[15]}}; 
+         default:;
+      endcase
+   end
+
    always_comb begin
       rf_data = alu_c;
       case(1'b1)
-         sm_l:      rf_data = i_data; 
+         sm_l:      rf_data = ld_data; 
          sm_k,
          sm_j:      rf_data = pc_q; 
          sm_lui:    rf_data = {is_q.u.imm_31_12,12'd0}; 
