@@ -11,7 +11,7 @@
 #include "Vx_top_rv32i.h"
 
 #define MEM_SIZE     0x10000
-#define MAX_SIM_TIME 10000
+#define MAX_SIM_TIME 100000
 
 vluint64_t sim_time = 0;
 
