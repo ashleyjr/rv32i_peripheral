@@ -262,8 +262,8 @@ module x_top_rv32i(
 
    assign alu_add =  sm_s | sm_l | sm_u |
                     (sm_i & (funct3 == 3'b000)) | 
-                    (sm_r & (funct3 == 3'b000) & (is_q.r.funct7 == 'd0));
-   assign alu_sub =  sm_r & (funct3 == 3'b000) & (is_q.r.funct7 == 7'b0100000);
+                    (sm_r & (funct3 == 3'b000) & ~is_q.r.funct7[5]);
+   assign alu_sub =  sm_r & (funct3 == 3'b000) &  is_q.r.funct7[5];
    assign alu_slt = (sm_b & (funct3[2:1] == 2'b10));
    assign alu_lt  = (sm_b & (funct3[2:1] == 2'b11))| 
                     ((sm_i | sm_r) & (funct3[2:1] == 2'b01));
@@ -271,8 +271,8 @@ module x_top_rv32i(
    assign alu_or  = (sm_i | sm_r) & (funct3 == 3'b110);
    assign alu_eq  = sm_b & (funct3[2:1] == 2'b00);
    assign alu_sl  = (funct3 == 3'b001);
-   assign alu_sr  = (funct3 == 3'b101) & (is_q.r.funct7 == 'b0000000); 
-   assign alu_sar = (funct3 == 3'b101) & (is_q.r.funct7 == 'b0100000);
+   assign alu_sr  = (funct3 == 3'b101) & ~is_q.r.funct7[5]; 
+   assign alu_sar = (funct3 == 3'b101) &  is_q.r.funct7[5];
 
 
    assign alu_shift = (sm_i) ? rs2 : rf_rs2[4:0];
