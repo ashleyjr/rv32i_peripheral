@@ -109,6 +109,7 @@ module x_top_rv32i(
    sm_t                    sm_q;
    sm_t                    sm_d;
 
+   logic                   pc_alu;
    logic [31:0]            pc_base;
    logic [31:0]            pc_next;
    logic signed [31:0]     pc_imm;
@@ -137,8 +138,7 @@ module x_top_rv32i(
    logic                   alu_add;
    logic                   alu_sub;
    logic                   alu_slt;
-   logic                   alu_lt;
-   logic                   alu_eq;
+   logic                   alu_lt; 
    logic                   alu_xor;
    logic                   alu_or;
    logic                   alu_sl;
@@ -263,13 +263,10 @@ module x_top_rv32i(
    assign alu_add =  sm_s | sm_l | sm_u |
                     (sm_i & (funct3 == 3'b000)) | 
                     (sm_r & (funct3 == 3'b000) & ~is_q.r.funct7[5]);
-   assign alu_sub =  sm_r & (funct3 == 3'b000) &  is_q.r.funct7[5];
-   assign alu_slt = (sm_b & (funct3[2:1] == 2'b10));
-   assign alu_lt  = (sm_b & (funct3[2:1] == 2'b11))| 
-                    ((sm_i | sm_r) & (funct3[2:1] == 2'b01));
+   assign alu_sub =  sm_r & (funct3 == 3'b000) &  is_q.r.funct7[5]; 
+   assign alu_lt  = ((sm_i | sm_r) & (funct3[2:1] == 2'b01));
    assign alu_xor = (sm_i | sm_r) & (funct3 == 3'b100);
-   assign alu_or  = (sm_i | sm_r) & (funct3 == 3'b110);
-   assign alu_eq  = sm_b & (funct3[2:1] == 2'b00);
+   assign alu_or  = (sm_i | sm_r) & (funct3 == 3'b110); 
    assign alu_sl  = (funct3 == 3'b001);
    assign alu_sr  = (funct3 == 3'b101) & ~is_q.r.funct7[5]; 
    assign alu_sar = (funct3 == 3'b101) &  is_q.r.funct7[5];
@@ -283,8 +280,6 @@ module x_top_rv32i(
          alu_add: alu_c = s_alu_a + s_alu_b;
          alu_sub: alu_c = rf_rs1 - alu_b;
          alu_lt:  alu_c = (rf_rs1 < alu_b) ? 'd1 : 'd0;  
-         alu_slt: alu_c = (s_alu_a < s_alu_b) ? 'd1 : 'd0; 
-         alu_eq:  alu_c = (rf_rs1 == alu_b) ? 'd1 : 'd0; 
          alu_sl:  alu_c = rf_rs1 << alu_shift;
          alu_sr:  alu_c = rf_rs1 >> alu_shift; 
          alu_sar: alu_c = s_alu_a >>> alu_shift; 
@@ -296,7 +291,16 @@ module x_top_rv32i(
 
    ///////////////////////////////////////////////////////////////////
    // Program Counter
- 
+
+   always_comb begin 
+      pc_alu = (rf_rs1 == alu_b); 
+      case(funct3[2:1])
+         2'b10: pc_alu = (s_alu_a < s_alu_b);
+         2'b11: pc_alu = (rf_rs1 < alu_b);    
+         default:; 
+      endcase
+   end
+   
    assign pc_b[31:13]            = {19{is_q.b.imm_12_10_5[6]}};
    assign {pc_b[12],pc_b[10:5]}  = is_q.b.imm_12_10_5;
    assign {pc_b[4:1],pc_b[11]}   = is_q.b.imm_4_1_11;
@@ -315,7 +319,7 @@ module x_top_rv32i(
                                pc_j;
    assign pc_jump   = pc_base + pc_imm - 'd4;  
    assign pc_next   = pc_q + 'd4;  
-   assign pc_branch = sm_b & (alu_c[0] ^ funct3[0]); 
+   assign pc_branch = sm_b & (pc_alu ^ funct3[0]); 
    assign pc_d      = (sm_k            ) ? (pc_base + pc_imm):
                       (sm_j | pc_branch) ?  pc_jump : 
                                             pc_next;
