@@ -2,7 +2,7 @@
 echo "========================================================"
 echo "Running synth..."
 rm -f syn.log
-yosys -p 'synth_ice40 -top x_top -blif x_top.blif -json x_top.json' rtl/x_top.sv ../x_top_rv32i/rtl/x_top_rv32i.sv ../x_top_mem/rtl/x_top_mem.sv ../x_top_uart_tx/rtl/x_top_uart_tx.sv ../x_top_uart_rx/rtl/x_top_uart_rx.sv > syn.log
+yosys -p 'synth_ice40 -top x_top -blif x_top.blif -json x_top.json' rtl/x_top.sv ../x_top_rv32i/rtl/x_top_rv32i.sv ../x_top_rv32i_rf/rtl/x_top_rv32i_rf.sv ../x_top_rv32i_rf_bram/rtl/x_top_rv32i_rf_bram.sv ../x_top_mem/rtl/x_top_mem.sv ../x_top_uart_tx/rtl/x_top_uart_tx.sv ../x_top_uart_rx/rtl/x_top_uart_rx.sv > syn.log
 cat syn.log | grep -A30 statistics
 echo "========================================================"
 echo "Running place and route..."

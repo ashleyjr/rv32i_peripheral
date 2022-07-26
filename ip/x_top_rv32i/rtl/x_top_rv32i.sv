@@ -217,28 +217,20 @@ module x_top_rv32i(
          default:;
       endcase
    end
-
-   always_comb begin
-      for(int i=0;i<32;i++) begin
-         rf_d[i] = rf_q[i]; 
-      end
-      rf_d[rd] = rf_data;  
-      rf_d[0] = 'd0;
-   end
    
    assign rf_en = sm_i | (sm_l & sm_en) | sm_r | sm_u | sm_j | sm_k;
 
-   generate
-      for(genvar i=0;i<32;i++) begin
-         always_ff@(posedge i_clk or negedge i_nrst) begin
-            if(!i_nrst)    rf_q[i] <= 'd0;
-            else if(rf_en) rf_q[i] <= rf_d[i];
-         end
-      end
-   endgenerate
- 
-   assign rf_rs1 = (rs1 == 'd0) ? 'd0 :  rf_q[rs1];
-   assign rf_rs2 = (rs2 == 'd0) ? 'd0 :  rf_q[rs2];
+   x_top_rv32i_rf u_rf(
+      .i_nrst        (i_nrst  ),
+      .i_clk         (i_clk   ), 
+      .i_wnr         (rf_en   ),
+      .i_rs1         (rs1     ),
+      .o_rs1_data    (rf_rs1  ),    
+      .i_rs2         (rs2     ),
+      .o_rs2_data    (rf_rs2  ),
+      .i_rd          (rd      ),
+      .i_rd_data     (rf_data )
+   );
 
    ///////////////////////////////////////////////////////////////////
    // ALU
