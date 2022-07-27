@@ -15,7 +15,7 @@ module x_top_uart_rx#(
     
    typedef enum logic [6:0] {
       IDLE, START, 
-      A0, A1, A2, A3, A4, A5, A6, A7, P0
+      A0, A1, A2, A3, A4, A5, A6, A7
    } sm_uart_t;
  
    logic                      p0_rx;
@@ -44,6 +44,9 @@ module x_top_uart_rx#(
    logic [7:0]                data_d;
    logic [7:0]                data_q;
    logic                      data_en;
+
+   logic                      valid_d;
+   logic                      valid_q;
 
    ///////////////////////////////////////////////////////////////////
    // Resync Input
@@ -89,7 +92,7 @@ module x_top_uart_rx#(
    // State machine updates
   
    assign sm_uart_inc   = sm_uart_q + 'd1; 
-   assign sm_uart_d     = (sm_uart_q == P0) ? IDLE  : sm_uart_inc;
+   assign sm_uart_d     = (sm_uart_q == A7) ? IDLE  : sm_uart_inc;
    assign sm_uart_idle  = (sm_uart_q == IDLE);
    assign sm_uart_start = (sm_uart_q == START);
    assign sm_uart_en    = (sm_uart_idle ) ? rx_fall: 
@@ -104,15 +107,21 @@ module x_top_uart_rx#(
    ///////////////////////////////////////////////////////////////////
    // Ending
 
-   assign o_valid = (sm_uart_q == P0) & timer_top & (^data_q == p2_rx); 
+   assign valid_d = (sm_uart_q == A7) & timer_top; 
+
+   always_ff@(posedge i_clk or negedge i_nrst) begin
+      if(!i_nrst) valid_q <= 'd0;
+      else        valid_q <= valid_d;
+   end
+
+   assign o_valid = valid_q;
 
    ///////////////////////////////////////////////////////////////////
    // Flop RX
  
    assign data_d  = {p2_rx, data_q[7:1]};
    assign data_en = ~(  (sm_uart_q == IDLE)|
-                        (sm_uart_q == START)|
-                        (sm_uart_q == P0)) & 
+                        (sm_uart_q == START)) & 
                       sm_uart_en;
    always_ff@(posedge i_clk or negedge i_nrst) begin
       if(!i_nrst)       data_q <= 'd0;

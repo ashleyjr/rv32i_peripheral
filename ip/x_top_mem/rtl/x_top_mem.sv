@@ -67,7 +67,7 @@ module x_top_mem#(
    ///////////////////////////////////////////////////////////////////
    // State Machine
 
-   assign sm_tx = (sm_q == R_CMD)|
+   assign sm_tx =  (sm_q == R_CMD)|
                    (sm_q ==  R0)|
                    (sm_q ==  R1)|
                    (sm_q ==  R2)|

@@ -3,7 +3,13 @@
 verilator --trace \
    --cc rtl/x_top.sv \
    --cc ../x_top_rv32i/rtl/x_top_rv32i.sv \
+   --cc ../x_top_rv32i_rf/rtl/x_top_rv32i_rf.sv \
+   --cc ../x_top_rv32i_rf_bram/rtl/x_top_rv32i_rf_bram.sv \
    --cc ../x_top_mem/rtl/x_top_mem.sv \
    --cc ../x_top_uart_tx/rtl/x_top_uart_tx.sv \
-   --cc ../x_top_uart_rx/rtl/x_top_uart_rx.sv 
+   --cc ../x_top_uart_rx/rtl/x_top_uart_rx.sv \
+   --exe tb/x_top_tb.cpp \
+   +define+SIM
+
+make -C obj_dir -f Vx_top.mk Vx_top
 
