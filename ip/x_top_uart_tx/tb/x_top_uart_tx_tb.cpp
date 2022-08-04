@@ -28,7 +28,7 @@ int main(int argc, char** argv, char** env) {
       if(dut->o_accept == 1)
          dut->i_valid = 0;
 
-      if(sim_time > 50000){ 
+      if(sim_time == 50000){ 
          dut->i_valid = 1;
          dut->i_data = 0xAA;
       }

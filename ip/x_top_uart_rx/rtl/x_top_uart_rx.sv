@@ -9,7 +9,7 @@ module x_top_uart_rx#(
    output   logic [7:0] o_data
 );
  
-   localparam p_timer_top   = 1000;
+   localparam p_timer_top   = p_clk_hz / p_baud;
    localparam p_timer_half  = p_timer_top / 2;
    localparam p_timer_width = $clog2(p_timer_top);
     

@@ -1,6 +1,6 @@
 module x_top_uart_tx#(
-   p_clk_hz = 1000000, 
-   p_baud   = 9600
+   p_clk_hz = 12000000, 
+   p_baud   = 115200
 )(
    input    logic       i_clk,
    input    logic       i_nrst,
@@ -10,12 +10,12 @@ module x_top_uart_tx#(
    output   logic       o_accept
 );
  
-   localparam p_timer_top   = 1000;
+   localparam p_timer_top   = p_clk_hz / p_baud;
    localparam p_timer_width = $clog2(p_timer_top);
     
    typedef enum logic [6:0] {
       IDLE_0, IDLE_1, START, 
-      A0, A1, A2, A3, A4, A5, A6, A7, P0
+      A0, A1, A2, A3, A4, A5, A6, A7
    } sm_uart_t;
   
    sm_uart_t                  sm_uart_q;
@@ -35,7 +35,7 @@ module x_top_uart_tx#(
    assign timer_top  = (timer_q == p_timer_top);
    assign timer_inc  = timer_q + 'd1;
    assign timer_d    = (timer_top) ? 'd0 : timer_inc; 
-   assign timer_en   = (sm_uart_q != IDLE_1);
+   assign timer_en   = (sm_uart_q != IDLE_0);
 
    always_ff@(posedge i_clk or negedge i_nrst) begin
       if(!i_nrst)       timer_q <= 'd0;
@@ -46,8 +46,8 @@ module x_top_uart_tx#(
    // State machine updates
   
    assign sm_uart_inc = sm_uart_q + 'd1; 
-   assign sm_uart_d   = (sm_uart_q == P0    ) ? IDLE_0  : sm_uart_inc;
-   assign sm_uart_en  = (sm_uart_q == IDLE_1) ? i_valid : timer_top; 
+   assign sm_uart_d   = (sm_uart_q == A7    ) ? IDLE_0  : sm_uart_inc;
+   assign sm_uart_en  = (sm_uart_q == IDLE_0) ? i_valid : timer_top; 
  
    always_ff@(posedge i_clk or negedge i_nrst) begin
       if(!i_nrst)          sm_uart_q <= IDLE_0;
@@ -57,7 +57,7 @@ module x_top_uart_tx#(
    ///////////////////////////////////////////////////////////////////
    // Ending
 
-   assign o_accept = (sm_uart_q == P0) & timer_top; 
+   assign o_accept = (sm_uart_q == A7) & timer_top; 
 
    ///////////////////////////////////////////////////////////////////
    // Drive TX
@@ -73,7 +73,6 @@ module x_top_uart_tx#(
          A5:      o_tx = i_data[5];
          A6:      o_tx = i_data[6];
          A7:      o_tx = i_data[7];
-         P0:      o_tx = ^i_data;
          default: o_tx = 1'b1;
       endcase
    end

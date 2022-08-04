@@ -1,0 +1,4 @@
+verilator --trace \
+   --cc rtl/x_top_uart_test.sv \
+   --cc ../x_top_uart_tx/rtl/x_top_uart_tx.sv \
+   --cc ../x_top_uart_rx/rtl/x_top_uart_rx.sv 
