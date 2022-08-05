@@ -45,6 +45,7 @@ int main(int argc, char** argv, char** env) {
       
       // i_uart_valid
       switch(sim_time){
+         case 100:   
          case 100000:   
          case 200000:   
          case 300000:   

@@ -20,6 +20,7 @@ module x_top_mem#(
    localparam int p_timeout_width = $clog2(p_timeout);
 
    typedef enum logic [6:0] {
+      START,
       IDLE,
       W_CMD,W_CMD_A,
       W0,W1,W2,W3,
@@ -98,6 +99,7 @@ module x_top_mem#(
 
    always_comb begin
       case(sm_q) 
+         START:                  sm_d = IDLE;
          IDLE:       if(i_rnw)   sm_d = R_CMD;
                      else        sm_d = W_CMD;
          R_CMD:                  sm_d = R_CMD_A; 
@@ -139,7 +141,7 @@ module x_top_mem#(
    end 
 
    always_ff@(posedge i_clk or negedge i_nrst) begin
-      if(!i_nrst)    sm_q <= IDLE;
+      if(!i_nrst)    sm_q <= START;
       else if(sm_en) sm_q <= sm_d;
    end 
    

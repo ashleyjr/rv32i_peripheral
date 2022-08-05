@@ -15,7 +15,7 @@ module x_top_uart_tx#(
     
    typedef enum logic [6:0] {
       IDLE_0, IDLE_1, START, 
-      A0, A1, A2, A3, A4, A5, A6, A7
+      A0, A1, A2, A3, A4, A5, A6, A7, STOP
    } sm_uart_t;
   
    sm_uart_t                  sm_uart_q;
@@ -46,7 +46,7 @@ module x_top_uart_tx#(
    // State machine updates
   
    assign sm_uart_inc = sm_uart_q + 'd1; 
-   assign sm_uart_d   = (sm_uart_q == A7    ) ? IDLE_0  : sm_uart_inc;
+   assign sm_uart_d   = (sm_uart_q == STOP    ) ? IDLE_0  : sm_uart_inc;
    assign sm_uart_en  = (sm_uart_q == IDLE_0) ? i_valid : timer_top; 
  
    always_ff@(posedge i_clk or negedge i_nrst) begin
@@ -57,7 +57,7 @@ module x_top_uart_tx#(
    ///////////////////////////////////////////////////////////////////
    // Ending
 
-   assign o_accept = (sm_uart_q == A7) & timer_top; 
+   assign o_accept = (sm_uart_q == STOP) & timer_top; 
 
    ///////////////////////////////////////////////////////////////////
    // Drive TX

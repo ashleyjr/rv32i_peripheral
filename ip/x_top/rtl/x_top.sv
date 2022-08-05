@@ -1,6 +1,6 @@
 module x_top #(
-   p_clk_hz    = 1200000, 
-   p_baud      = 115200,
+   p_clk_hz    = 12000000, 
+   p_baud      = 9600,
    p_timeout   = 100000
 )(
    input    logic       i_clk,
